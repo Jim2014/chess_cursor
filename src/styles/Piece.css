@@ -1,0 +1,12 @@
+.piece {
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.white-piece {
+  color: #ffffff;
+}
+
+.black-piece {
+  color: #000000;
+}
