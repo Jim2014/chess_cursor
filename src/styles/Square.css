@@ -4,6 +4,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
 }
 
 .square.light {
@@ -12,4 +13,8 @@
 
 .square.dark {
   background-color: #b58863;
+}
+
+.square.selected {
+  outline: 3px solid red;
 }

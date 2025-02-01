@@ -6,3 +6,9 @@
 .board-row {
   display: flex;
 }
+
+.turn-indicator {
+  margin-top: 10px;
+  font-size: 18px;
+  font-weight: bold;
+}
