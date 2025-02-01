@@ -1,4 +1,3 @@
-// src/components/Board.tsx
 import React, { useState } from "react";
 import Square from "./Square";
 import MoveHistory from "./MoveHistory";
@@ -7,15 +6,26 @@ import { Position, Piece, Move } from "../logic/types";
 import { initialBoardSetup } from "../logic/GameManager";
 import { isValidMove } from "../logic/ChessRulesEngine";
 
+// Define a type for storing the current game state.
+interface GameState {
+  board: (Piece | null)[][];
+  turn: "white" | "black";
+  moveHistory: Move[];
+}
+
 const Board: React.FC = () => {
-  // Board state, selected piece, allowed moves, turn, and move history.
+  // Current game state
   const [board, setBoard] = useState<(Piece | null)[][]>(initialBoardSetup());
   const [selectedPosition, setSelectedPosition] = useState<Position | null>(null);
   const [allowedMoves, setAllowedMoves] = useState<Position[]>([]);
   const [turn, setTurn] = useState<"white" | "black">("white");
   const [moveHistory, setMoveHistory] = useState<Move[]>([]);
 
-  // Compute allowed moves for a selected piece.
+  // Undo/redo stacks
+  const [undoStack, setUndoStack] = useState<GameState[]>([]);
+  const [redoStack, setRedoStack] = useState<GameState[]>([]);
+
+  // Compute allowed moves for the selected piece.
   const computeAllowedMoves = (position: Position): Position[] => {
     const moves: Position[] = [];
     for (let row = 0; row < 8; row++) {
@@ -29,12 +39,19 @@ const Board: React.FC = () => {
     return moves;
   };
 
+  // Save current game state to the undo stack and clear the redo stack.
+  const pushCurrentStateToUndoStack = () => {
+    const currentState: GameState = { board, turn, moveHistory };
+    setUndoStack([...undoStack, currentState]);
+    setRedoStack([]); // Clear redo history on a new move.
+  };
+
   const handleSquareClick = (position: Position) => {
     const clickedPiece = board[position.row][position.col];
 
     if (!selectedPosition) {
       // No piece is currently selected.
-      // If a piece exists at the clicked square and it belongs to the current turn, select it.
+      // Select the piece if it exists and belongs to the current turn.
       if (clickedPiece && clickedPiece.color === turn) {
         setSelectedPosition(position);
         const allowed = computeAllowedMoves(position);
@@ -42,37 +59,74 @@ const Board: React.FC = () => {
       }
       return;
     } else {
-      // If the user clicks on an allowed move square, execute the move.
+      // A piece is already selected.
+      // Check if the clicked square is among the allowed moves.
       const isAllowed = allowedMoves.some(
         (pos) => pos.row === position.row && pos.col === position.col
       );
       if (isAllowed) {
+        // Before performing the move, push the current state to the undo stack.
+        pushCurrentStateToUndoStack();
+
+        // Execute the move.
         const move: Move = { from: selectedPosition, to: position };
-        // Create a deep copy of the board and perform the move.
         const newBoard = board.map((row) => row.slice());
         newBoard[position.row][position.col] = board[selectedPosition.row][selectedPosition.col];
         newBoard[selectedPosition.row][selectedPosition.col] = null;
         setBoard(newBoard);
-        // Record the move and switch the turn.
+
+        // Update move history and switch turn.
         setMoveHistory([...moveHistory, move]);
         setTurn(turn === "white" ? "black" : "white");
         setSelectedPosition(null);
         setAllowedMoves([]);
         return;
       } else {
-        // If the clicked square is not allowed but contains another piece that belongs to the current turn,
-        // update the selection.
+        // If clicking on another piece of the same color, update the selection.
         if (clickedPiece && clickedPiece.color === turn) {
           setSelectedPosition(position);
           const allowed = computeAllowedMoves(position);
           setAllowedMoves(allowed);
         } else {
-          // Otherwise, clear the selection.
+          // Otherwise, clear selection.
           setSelectedPosition(null);
           setAllowedMoves([]);
         }
       }
     }
+  };
+
+  // Undo: Restore the previous game state.
+  const handleUndo = () => {
+    if (undoStack.length === 0) return;
+    // Save the current state to the redo stack.
+    const currentState: GameState = { board, turn, moveHistory };
+    const lastState = undoStack[undoStack.length - 1];
+    setUndoStack(undoStack.slice(0, -1));
+    setRedoStack([...redoStack, currentState]);
+
+    // Restore the previous state.
+    setBoard(lastState.board);
+    setTurn(lastState.turn);
+    setMoveHistory(lastState.moveHistory);
+    setSelectedPosition(null);
+    setAllowedMoves([]);
+  };
+
+  // Redo: Restore the state from the redo stack.
+  const handleRedo = () => {
+    if (redoStack.length === 0) return;
+    const currentState: GameState = { board, turn, moveHistory };
+    const nextState = redoStack[redoStack.length - 1];
+    setRedoStack(redoStack.slice(0, -1));
+    setUndoStack([...undoStack, currentState]);
+
+    // Restore the next state.
+    setBoard(nextState.board);
+    setTurn(nextState.turn);
+    setMoveHistory(nextState.moveHistory);
+    setSelectedPosition(null);
+    setAllowedMoves([]);
   };
 
   const resetGame = () => {
@@ -81,6 +135,8 @@ const Board: React.FC = () => {
     setSelectedPosition(null);
     setAllowedMoves([]);
     setMoveHistory([]);
+    setUndoStack([]);
+    setRedoStack([]);
     localStorage.removeItem("chessGameState");
   };
 
@@ -149,6 +205,12 @@ const Board: React.FC = () => {
         </button>
         <button className="load-button" onClick={loadGame}>
           Load Game
+        </button>
+        <button className="undo-button" onClick={handleUndo}>
+          Undo
+        </button>
+        <button className="redo-button" onClick={handleRedo}>
+          Redo
         </button>
       </div>
       <MoveHistory moves={moveHistory} />

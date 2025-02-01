@@ -23,3 +23,18 @@
   font-size: 16px;
   cursor: pointer;
 }
+
+/* Optionally add specific styles for undo and redo buttons */
+.undo-button {
+  background-color: #f0ad4e;
+  color: white;
+  border: none;
+  border-radius: 3px;
+}
+
+.redo-button {
+  background-color: #5bc0de;
+  color: white;
+  border: none;
+  border-radius: 3px;
+}
