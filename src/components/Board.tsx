@@ -2,16 +2,37 @@ import React, { useState } from "react";
 import Square from "./Square";
 import MoveHistory from "./MoveHistory";
 import "../styles/Board.css";
-import { Position, Piece, Move } from "../logic/types";
+import { Position, Piece, Move, GameState } from "../logic/types";
 import { initialBoardSetup } from "../logic/GameManager";
 import { isValidMove } from "../logic/ChessRulesEngine";
 
-// Define a type for storing the current game state.
-interface GameState {
-  board: (Piece | null)[][];
-  turn: "white" | "black";
-  moveHistory: Move[];
-}
+const createGameState = (board: (Piece | null)[][], turn: "white" | "black" = "white"): GameState => ({
+  board,
+  lastMove: null,
+  castlingRights: {
+    white: { kingSide: true, queenSide: true },
+    black: { kingSide: true, queenSide: true }
+  },
+  isCheck: false,
+  turn,
+  moveHistory: []
+});
+
+const getValidMoves = (board: (Piece | null)[][], position: { row: number; col: number }): { row: number; col: number }[] => {
+  const moves: { row: number; col: number }[] = [];
+  
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const move: Move = { from: position, to: { row, col } };
+      const gameState = createGameState(board);
+      if (isValidMove(gameState, move)) {
+        moves.push({ row, col });
+      }
+    }
+  }
+  
+  return moves;
+};
 
 const Board: React.FC = () => {
   // Current game state
@@ -25,13 +46,22 @@ const Board: React.FC = () => {
   const [undoStack, setUndoStack] = useState<GameState[]>([]);
   const [redoStack, setRedoStack] = useState<GameState[]>([]);
 
+  // Add these state variables
+  const [lastMove, setLastMove] = useState<Move | null>(null);
+  const [castlingRights, setCastlingRights] = useState({
+    white: { kingSide: true, queenSide: true },
+    black: { kingSide: true, queenSide: true }
+  });
+  const [isCheck, setIsCheck] = useState(false);
+
   // Compute allowed moves for the selected piece.
   const computeAllowedMoves = (position: Position): Position[] => {
     const moves: Position[] = [];
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
         const move: Move = { from: position, to: { row, col } };
-        if (isValidMove(board, move)) {
+        const gameState = createGameState(board, turn);
+        if (isValidMove(gameState, move)) {
           moves.push({ row, col });
         }
       }
@@ -41,7 +71,14 @@ const Board: React.FC = () => {
 
   // Save current game state to the undo stack and clear the redo stack.
   const pushCurrentStateToUndoStack = () => {
-    const currentState: GameState = { board, turn, moveHistory };
+    const currentState: GameState = {
+      board,
+      turn,
+      moveHistory,
+      lastMove,
+      castlingRights,
+      isCheck
+    };
     setUndoStack([...undoStack, currentState]);
     setRedoStack([]); // Clear redo history on a new move.
   };
@@ -99,16 +136,25 @@ const Board: React.FC = () => {
   // Undo: Restore the previous game state.
   const handleUndo = () => {
     if (undoStack.length === 0) return;
-    // Save the current state to the redo stack.
-    const currentState: GameState = { board, turn, moveHistory };
+    const currentState: GameState = {
+      board,
+      turn,
+      moveHistory,
+      lastMove,
+      castlingRights,
+      isCheck
+    };
     const lastState = undoStack[undoStack.length - 1];
     setUndoStack(undoStack.slice(0, -1));
     setRedoStack([...redoStack, currentState]);
 
-    // Restore the previous state.
+    // Restore the previous state
     setBoard(lastState.board);
     setTurn(lastState.turn);
     setMoveHistory(lastState.moveHistory);
+    setLastMove(lastState.lastMove);
+    setCastlingRights(lastState.castlingRights);
+    setIsCheck(lastState.isCheck);
     setSelectedPosition(null);
     setAllowedMoves([]);
   };
@@ -116,15 +162,25 @@ const Board: React.FC = () => {
   // Redo: Restore the state from the redo stack.
   const handleRedo = () => {
     if (redoStack.length === 0) return;
-    const currentState: GameState = { board, turn, moveHistory };
+    const currentState: GameState = {
+      board,
+      turn,
+      moveHistory,
+      lastMove,
+      castlingRights,
+      isCheck
+    };
     const nextState = redoStack[redoStack.length - 1];
     setRedoStack(redoStack.slice(0, -1));
     setUndoStack([...undoStack, currentState]);
 
-    // Restore the next state.
+    // Restore the next state
     setBoard(nextState.board);
     setTurn(nextState.turn);
     setMoveHistory(nextState.moveHistory);
+    setLastMove(nextState.lastMove);
+    setCastlingRights(nextState.castlingRights);
+    setIsCheck(nextState.isCheck);
     setSelectedPosition(null);
     setAllowedMoves([]);
   };
@@ -135,25 +191,50 @@ const Board: React.FC = () => {
     setSelectedPosition(null);
     setAllowedMoves([]);
     setMoveHistory([]);
+    setLastMove(null);
+    setCastlingRights({
+      white: { kingSide: true, queenSide: true },
+      black: { kingSide: true, queenSide: true }
+    });
+    setIsCheck(false);
     setUndoStack([]);
     setRedoStack([]);
     localStorage.removeItem("chessGameState");
   };
 
   const saveGame = () => {
-    const gameState = { board, turn, moveHistory };
+    const gameState: GameState = {
+      board,
+      turn,
+      moveHistory,
+      lastMove,
+      castlingRights,
+      isCheck
+    };
     localStorage.setItem("chessGameState", JSON.stringify(gameState));
   };
 
   const loadGame = () => {
     const savedState = localStorage.getItem("chessGameState");
     if (savedState) {
-      const { board, turn, moveHistory } = JSON.parse(savedState);
-      setBoard(board);
-      setTurn(turn);
-      setMoveHistory(moveHistory);
-      setSelectedPosition(null);
-      setAllowedMoves([]);
+      try {
+        const gameState: GameState = JSON.parse(savedState);
+        setBoard(gameState.board);
+        setTurn(gameState.turn);
+        setMoveHistory(gameState.moveHistory);
+        setLastMove(gameState.lastMove);
+        setCastlingRights(gameState.castlingRights);
+        setIsCheck(gameState.isCheck);
+        setSelectedPosition(null);
+        setAllowedMoves([]);
+        
+        // Force a re-render
+        setTimeout(() => {
+          setBoard(prev => [...prev]);
+        }, 0);
+      } catch (error) {
+        console.error('Error loading game state:', error);
+      }
     }
   };
 

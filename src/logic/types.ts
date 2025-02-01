@@ -13,6 +13,19 @@ export interface Position {
 }
 
 export interface Move {
-  from: Position;
-  to: Position;
+  from: { row: number; col: number };
+  to: { row: number; col: number };
+  promotion?: 'queen' | 'rook' | 'bishop' | 'knight';
+}
+
+export interface GameState {
+  board: (Piece | null)[][];
+  lastMove: Move | null;
+  castlingRights: {
+    white: { kingSide: boolean; queenSide: boolean };
+    black: { kingSide: boolean; queenSide: boolean };
+  };
+  isCheck: boolean;
+  turn: "white" | "black";
+  moveHistory: Move[];
 }
