@@ -1,46 +1,77 @@
 // src/components/Board.tsx
 import React, { useState } from "react";
 import Square from "./Square";
-import MoveHistory from "./MoveHistory"; // Make sure to import it!
+import MoveHistory from "./MoveHistory";
 import "../styles/Board.css";
 import { Position, Piece, Move } from "../logic/types";
 import { initialBoardSetup } from "../logic/GameManager";
 import { isValidMove } from "../logic/ChessRulesEngine";
 
 const Board: React.FC = () => {
+  // Board state, selected piece, allowed moves, turn, and move history.
   const [board, setBoard] = useState<(Piece | null)[][]>(initialBoardSetup());
   const [selectedPosition, setSelectedPosition] = useState<Position | null>(null);
+  const [allowedMoves, setAllowedMoves] = useState<Position[]>([]);
   const [turn, setTurn] = useState<"white" | "black">("white");
   const [moveHistory, setMoveHistory] = useState<Move[]>([]);
+
+  // Compute allowed moves for a selected piece.
+  const computeAllowedMoves = (position: Position): Position[] => {
+    const moves: Position[] = [];
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const move: Move = { from: position, to: { row, col } };
+        if (isValidMove(board, move)) {
+          moves.push({ row, col });
+        }
+      }
+    }
+    return moves;
+  };
 
   const handleSquareClick = (position: Position) => {
     const clickedPiece = board[position.row][position.col];
 
     if (!selectedPosition) {
-      // Select piece if it belongs to the current turn.
+      // No piece is currently selected.
+      // If a piece exists at the clicked square and it belongs to the current turn, select it.
       if (clickedPiece && clickedPiece.color === turn) {
         setSelectedPosition(position);
+        const allowed = computeAllowedMoves(position);
+        setAllowedMoves(allowed);
       }
       return;
     } else {
-      // Deselect if the same square is clicked.
-      if (selectedPosition.row === position.row && selectedPosition.col === position.col) {
-        setSelectedPosition(null);
-        return;
-      }
-      const move: Move = { from: selectedPosition, to: position };
-      if (isValidMove(board, move)) {
-        // Make a deep copy of the board and perform the move.
+      // If the user clicks on an allowed move square, execute the move.
+      const isAllowed = allowedMoves.some(
+        (pos) => pos.row === position.row && pos.col === position.col
+      );
+      if (isAllowed) {
+        const move: Move = { from: selectedPosition, to: position };
+        // Create a deep copy of the board and perform the move.
         const newBoard = board.map((row) => row.slice());
         newBoard[position.row][position.col] = board[selectedPosition.row][selectedPosition.col];
         newBoard[selectedPosition.row][selectedPosition.col] = null;
         setBoard(newBoard);
-        // Update the move history.
+        // Record the move and switch the turn.
         setMoveHistory([...moveHistory, move]);
-        // Switch the turn.
         setTurn(turn === "white" ? "black" : "white");
+        setSelectedPosition(null);
+        setAllowedMoves([]);
+        return;
+      } else {
+        // If the clicked square is not allowed but contains another piece that belongs to the current turn,
+        // update the selection.
+        if (clickedPiece && clickedPiece.color === turn) {
+          setSelectedPosition(position);
+          const allowed = computeAllowedMoves(position);
+          setAllowedMoves(allowed);
+        } else {
+          // Otherwise, clear the selection.
+          setSelectedPosition(null);
+          setAllowedMoves([]);
+        }
       }
-      setSelectedPosition(null);
     }
   };
 
@@ -48,6 +79,7 @@ const Board: React.FC = () => {
     setBoard(initialBoardSetup());
     setTurn("white");
     setSelectedPosition(null);
+    setAllowedMoves([]);
     setMoveHistory([]);
     localStorage.removeItem("chessGameState");
   };
@@ -65,6 +97,7 @@ const Board: React.FC = () => {
       setTurn(turn);
       setMoveHistory(moveHistory);
       setSelectedPosition(null);
+      setAllowedMoves([]);
     }
   };
 
@@ -75,6 +108,9 @@ const Board: React.FC = () => {
       selectedPosition &&
       selectedPosition.row === row &&
       selectedPosition.col === col;
+    const isAllowed = allowedMoves.some(
+      (pos) => pos.row === row && pos.col === col
+    );
     return (
       <Square
         key={`${row}-${col}`}
@@ -82,6 +118,7 @@ const Board: React.FC = () => {
         piece={piece}
         onClick={handleSquareClick}
         isSelected={!!isSelected}
+        allowed={isAllowed}
       />
     );
   };
@@ -114,7 +151,6 @@ const Board: React.FC = () => {
           Load Game
         </button>
       </div>
-      {/* Render the MoveHistory component and pass the moveHistory array */}
       <MoveHistory moves={moveHistory} />
     </div>
   );
