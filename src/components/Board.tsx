@@ -43,6 +43,12 @@ const Board: React.FC = () => {
     }
   };
 
+  const resetGame = () => {
+    setBoard(initialBoardSetup());
+    setTurn("white");
+    setSelectedPosition(null);
+  };
+
   const renderSquare = (row: number, col: number) => {
     const position: Position = { row, col };
     const piece = board[row][col];
@@ -78,6 +84,7 @@ const Board: React.FC = () => {
     <div>
       <div className="board">{boardRows}</div>
       <div className="turn-indicator">Turn: {turn}</div>
+      <button className="reset-button" onClick={resetGame}>Reset Game</button>
     </div>
   );
 };
