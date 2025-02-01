@@ -1,44 +1,45 @@
+// src/components/Board.tsx
 import React, { useState } from "react";
 import Square from "./Square";
+import MoveHistory from "./MoveHistory"; // Make sure to import it!
 import "../styles/Board.css";
-import { Position, Piece } from "../logic/types";
+import { Position, Piece, Move } from "../logic/types";
 import { initialBoardSetup } from "../logic/GameManager";
 import { isValidMove } from "../logic/ChessRulesEngine";
 
 const Board: React.FC = () => {
-  // Manage board state, selected square, and turn
   const [board, setBoard] = useState<(Piece | null)[][]>(initialBoardSetup());
   const [selectedPosition, setSelectedPosition] = useState<Position | null>(null);
   const [turn, setTurn] = useState<"white" | "black">("white");
+  const [moveHistory, setMoveHistory] = useState<Move[]>([]);
 
   const handleSquareClick = (position: Position) => {
     const clickedPiece = board[position.row][position.col];
 
-    // If no piece is selected, try to select one.
     if (!selectedPosition) {
-      // Only allow selection if a piece exists and it belongs to the current turn.
+      // Select piece if it belongs to the current turn.
       if (clickedPiece && clickedPiece.color === turn) {
         setSelectedPosition(position);
       }
       return;
     } else {
-      // If clicking the same square, deselect.
+      // Deselect if the same square is clicked.
       if (selectedPosition.row === position.row && selectedPosition.col === position.col) {
         setSelectedPosition(null);
         return;
       }
-      // Attempt to move the piece from selectedPosition to the clicked square.
-      const move = { from: selectedPosition, to: position };
+      const move: Move = { from: selectedPosition, to: position };
       if (isValidMove(board, move)) {
-        // Copy the board and move the piece.
+        // Make a deep copy of the board and perform the move.
         const newBoard = board.map((row) => row.slice());
         newBoard[position.row][position.col] = board[selectedPosition.row][selectedPosition.col];
         newBoard[selectedPosition.row][selectedPosition.col] = null;
         setBoard(newBoard);
+        // Update the move history.
+        setMoveHistory([...moveHistory, move]);
         // Switch the turn.
         setTurn(turn === "white" ? "black" : "white");
       }
-      // Clear selection whether the move was valid or not.
       setSelectedPosition(null);
     }
   };
@@ -47,6 +48,24 @@ const Board: React.FC = () => {
     setBoard(initialBoardSetup());
     setTurn("white");
     setSelectedPosition(null);
+    setMoveHistory([]);
+    localStorage.removeItem("chessGameState");
+  };
+
+  const saveGame = () => {
+    const gameState = { board, turn, moveHistory };
+    localStorage.setItem("chessGameState", JSON.stringify(gameState));
+  };
+
+  const loadGame = () => {
+    const savedState = localStorage.getItem("chessGameState");
+    if (savedState) {
+      const { board, turn, moveHistory } = JSON.parse(savedState);
+      setBoard(board);
+      setTurn(turn);
+      setMoveHistory(moveHistory);
+      setSelectedPosition(null);
+    }
   };
 
   const renderSquare = (row: number, col: number) => {
@@ -84,7 +103,19 @@ const Board: React.FC = () => {
     <div>
       <div className="board">{boardRows}</div>
       <div className="turn-indicator">Turn: {turn}</div>
-      <button className="reset-button" onClick={resetGame}>Reset Game</button>
+      <div className="controls">
+        <button className="reset-button" onClick={resetGame}>
+          Reset Game
+        </button>
+        <button className="save-button" onClick={saveGame}>
+          Save Game
+        </button>
+        <button className="load-button" onClick={loadGame}>
+          Load Game
+        </button>
+      </div>
+      {/* Render the MoveHistory component and pass the moveHistory array */}
+      <MoveHistory moves={moveHistory} />
     </div>
   );
 };

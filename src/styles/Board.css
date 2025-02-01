@@ -4,7 +4,7 @@
 }
 
 .board-row {
-  display: flex;
+  display: flex;  /* This is essential to line up the squares horizontally */
 }
 
 .turn-indicator {
@@ -13,9 +13,12 @@
   font-weight: bold;
 }
 
-/* Reset Button Styling */
-.reset-button {
+.controls {
   margin-top: 10px;
+}
+
+.controls button {
+  margin: 5px;
   padding: 8px 16px;
   font-size: 16px;
   cursor: pointer;
