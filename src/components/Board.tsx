@@ -1,10 +1,18 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Square from "./Square";
 import MoveHistory from "./MoveHistory";
 import "../styles/Board.css";
 import { Position, Piece, Move, GameState } from "../logic/types";
 import { initialBoardSetup } from "../logic/GameManager";
 import { isValidMove } from "../logic/ChessRulesEngine";
+import SaveGameDialog from './SaveGameDialog';
+import LoadGameDialog from './LoadGameDialog';
+
+interface SavedGame {
+  name: string;
+  date: string;
+  state: GameState;
+}
 
 const createGameState = (board: (Piece | null)[][], turn: "white" | "black" = "white"): GameState => ({
   board,
@@ -53,6 +61,19 @@ const Board: React.FC = () => {
     black: { kingSide: true, queenSide: true }
   });
   const [isCheck, setIsCheck] = useState(false);
+
+  // New state variables
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [showLoadDialog, setShowLoadDialog] = useState(false);
+  const [savedGames, setSavedGames] = useState<SavedGame[]>([]);
+
+  // Load saved games list on component mount
+  useEffect(() => {
+    const saves = localStorage.getItem('chessGameSaves');
+    if (saves) {
+      setSavedGames(JSON.parse(saves));
+    }
+  }, []);
 
   // Compute allowed moves for the selected piece.
   const computeAllowedMoves = (position: Position): Position[] => {
@@ -201,26 +222,34 @@ const Board: React.FC = () => {
     setRedoStack([]);
   };
 
-  const saveGame = () => {
-    const gameState: GameState = {
-      board,
-      turn,
-      moveHistory,
-      lastMove,
-      castlingRights,
-      isCheck
+  const handleSaveGame = (name: string) => {
+    const gameState: SavedGame = {
+      name,
+      date: new Date().toLocaleString(),
+      state: {
+        board,
+        turn,
+        moveHistory,
+        lastMove,
+        castlingRights,
+        isCheck
+      }
     };
-    localStorage.setItem("chessGameState", JSON.stringify(gameState));
+    
+    const updatedSaves = savedGames.filter(save => save.name !== name);
+    const newSaves = [...updatedSaves, gameState];
+    localStorage.setItem('chessGameSaves', JSON.stringify(newSaves));
+    setSavedGames(newSaves);
+    setShowSaveDialog(false);
   };
 
-  const loadGame = () => {
-    const savedState = localStorage.getItem("chessGameState");
-    if (savedState) {
+  const handleLoadGame = (name: string) => {
+    const savedGame = savedGames.find(save => save.name === name);
+    if (savedGame) {
       try {
-        const gameState: GameState = JSON.parse(savedState);
+        const gameState = savedGame.state;
         setUndoStack([]);
         setRedoStack([]);
-
         setBoard(gameState.board);
         setTurn(gameState.turn);
         setMoveHistory(gameState.moveHistory);
@@ -230,17 +259,21 @@ const Board: React.FC = () => {
         setSelectedPosition(null);
         setAllowedMoves([]);
         
-        // Force a re-render
         setTimeout(() => {
           setBoard(prev => [...prev]);
         }, 0);
+        setShowLoadDialog(false);
       } catch (error) {
         console.error('Error loading game state:', error);
         alert('Failed to load saved game');
       }
-    } else {
-      alert('No saved game found');
     }
+  };
+
+  const handleDeleteSave = (name: string) => {
+    const newSaves = savedGames.filter(save => save.name !== name);
+    localStorage.setItem('chessGameSaves', JSON.stringify(newSaves));
+    setSavedGames(newSaves);
   };
 
   const renderSquare = (row: number, col: number) => {
@@ -303,10 +336,10 @@ const Board: React.FC = () => {
             <button className="reset-button" onClick={resetGame}>
               Reset Game
             </button>
-            <button className="save-button" onClick={saveGame}>
+            <button className="save-button" onClick={() => setShowSaveDialog(true)}>
               Save Game
             </button>
-            <button className="load-button" onClick={loadGame}>
+            <button className="load-button" onClick={() => setShowLoadDialog(true)}>
               Load Game
             </button>
             <button className="undo-button" onClick={handleUndo}>
@@ -321,6 +354,20 @@ const Board: React.FC = () => {
           <MoveHistory moves={moveHistory} />
         </div>
       </div>
+      {showSaveDialog && (
+        <SaveGameDialog
+          onSave={handleSaveGame}
+          onCancel={() => setShowSaveDialog(false)}
+        />
+      )}
+      {showLoadDialog && (
+        <LoadGameDialog
+          saves={savedGames}
+          onLoad={handleLoadGame}
+          onDelete={handleDeleteSave}
+          onCancel={() => setShowLoadDialog(false)}
+        />
+      )}
     </div>
   );
 };

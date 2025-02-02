@@ -2,6 +2,13 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Board from '../../components/Board';
+import { initialBoardSetup } from '../../logic/GameManager';
+import { act } from 'react-dom/test-utils';
+
+// Clear localStorage before each test
+beforeEach(() => {
+  localStorage.clear();
+});
 
 describe('Board Component', () => {
   test('renders chess board with correct initial setup', () => {
@@ -100,60 +107,136 @@ describe('Board Component', () => {
     expect(squares[40].querySelector('.piece')?.textContent).toBe('♙');
   });
 
-  test('save and load functionality works', async () => {
-    const { container, unmount, rerender } = render(<Board />);
+  describe('Save/Load Game Management', () => {
+    test('can save a game with a custom name', async () => {
+      const { container } = render(<Board />);
+      
+      // Make a move
+      const whitePawn = screen.getAllByText('♙')[0];
+      fireEvent.click(whitePawn);
+      const squares = container.querySelectorAll('.square');
+      fireEvent.click(squares[40]); // Move pawn two squares forward
     
-    // Make a move
-    const whitePawn = screen.getAllByText('♙')[0];
-    fireEvent.click(whitePawn);
-    const squares = container.querySelectorAll('.square');
-    fireEvent.click(squares[40]);
-
-    // Verify move was made
-    await waitFor(() => {
-      expect(squares[40].querySelector('.piece')?.textContent).toBe('♙');
+      // Open save dialog
+      fireEvent.click(screen.getByText('Save Game'));
+      
+      // Enter save name
+      const saveInput = screen.getByPlaceholderText('Enter save name');
+      fireEvent.change(saveInput, { target: { value: 'Test Save 1' } });
+      
+      // Click save button
+      fireEvent.click(screen.getByText('Save'));
+      
+      // Verify save in localStorage
+      const saves = JSON.parse(localStorage.getItem('chessGameSaves') || '[]');
+      expect(saves).toHaveLength(1);
+      expect(saves[0].name).toBe('Test Save 1');
+      expect(saves[0].state.moveHistory).toHaveLength(1);
     });
 
-    // Save game
-    fireEvent.click(screen.getByText('Save Game'));
-    
-    // Wait for save to complete
-    await waitFor(() => {
-      const savedState = localStorage.getItem('chessGameState');
-      expect(savedState).toBeTruthy();
-    });
-    
-    // Unmount the board to simulate a page reload
-    unmount();
-    
-    // Render a new instance of Board (simulating reopening the application)
-    const { container: newContainer, rerender: newRerender } = render(<Board />);
-    
-    // Load game into the new board instance
-    fireEvent.click(screen.getByText('Load Game'));
-    
-    // Optionally force a re-render
-    newRerender(<Board />);
-    
-    // Wait for and verify the loaded state
-    await waitFor(
-      () => {
-        const loadedSquares = newContainer.querySelectorAll('.square');
-        const pieceAtTarget = loadedSquares[40].querySelector('.piece');
-        if (!pieceAtTarget) {
-          console.log('Current localStorage state:', localStorage.getItem('chessGameState'));
-          console.log('Current board state:', {
-            targetSquare: loadedSquares[40].innerHTML,
-            hasPiece: !!loadedSquares[40].querySelector('.piece'),
-            pieceContent: loadedSquares[40].querySelector('.piece')?.textContent,
-            allPieces: newContainer.querySelectorAll('.piece').length
-          });
-          throw new Error('Piece not found at target square');
+    test('can load a saved game', async () => {
+      // First save a game
+      const initialBoard = initialBoardSetup();
+      // Move a pawn from a7 to a5
+      initialBoard[4][0] = initialBoard[6][0];  // Move pawn to a5
+      initialBoard[6][0] = null;  // Clear original position
+
+      const savedGame = {
+        name: 'Test Save',
+        date: new Date().toLocaleString(),
+        state: {
+          board: initialBoard,
+          turn: 'black',
+          moveHistory: [{ from: { row: 6, col: 0 }, to: { row: 4, col: 0 } }],
+          lastMove: null,
+          castlingRights: {
+            white: { kingSide: true, queenSide: true },
+            black: { kingSide: true, queenSide: true }
+          },
+          isCheck: false
         }
-        expect(pieceAtTarget.textContent).toBe('♙');
-      },
-      { timeout: 3000, interval: 100 }
-    );
+      };
+      localStorage.setItem('chessGameSaves', JSON.stringify([savedGame]));
+
+      const { container } = render(<Board />);
+
+      // Open load dialog
+      fireEvent.click(screen.getByText('Load Game'));
+      
+      // Click load button for the saved game
+      fireEvent.click(screen.getByText('Load'));
+      
+      // Verify game state was loaded
+      await waitFor(() => {
+        expect(screen.getByText('Turn: black')).toBeInTheDocument();
+        const squares = container.querySelectorAll('.square');
+        // Check that pawn moved from a7 to a5
+        expect(squares[32].querySelector('.piece')?.textContent).toBe('♙');  // a5
+        expect(squares[48].querySelector('.piece')).toBeNull();  // a7 should be empty
+      });
+    });
+
+    test('can delete a saved game', async () => {
+      // First save a game
+      const savedGame = {
+        name: 'Test Save',
+        date: new Date().toLocaleString(),
+        state: {
+          board: initialBoardSetup(),
+          turn: 'white',
+          moveHistory: [],
+          lastMove: null,
+          castlingRights: {
+            white: { kingSide: true, queenSide: true },
+            black: { kingSide: true, queenSide: true }
+          },
+          isCheck: false
+        }
+      };
+      localStorage.setItem('chessGameSaves', JSON.stringify([savedGame]));
+
+      render(<Board />);
+
+      // Open load dialog
+      fireEvent.click(screen.getByText('Load Game'));
+      
+      // Click delete button
+      fireEvent.click(screen.getByText('Delete'));
+      
+      // Verify save was deleted
+      const saves = JSON.parse(localStorage.getItem('chessGameSaves') || '[]');
+      expect(saves).toHaveLength(0);
+    });
+
+    test('handles multiple saves', async () => {
+      const { container } = render(<Board />);
+
+      // Save first game
+      fireEvent.click(screen.getByText('Save Game'));
+      fireEvent.change(screen.getByPlaceholderText('Enter save name'), 
+        { target: { value: 'Save 1' } }
+      );
+      fireEvent.click(screen.getByText('Save'));
+
+      // Make a move and save second game
+      const whitePawn = screen.getAllByText('♙')[0];
+      fireEvent.click(whitePawn);
+      const squares = container.querySelectorAll('.square');
+      fireEvent.click(squares[40]);
+
+      fireEvent.click(screen.getByText('Save Game'));
+      fireEvent.change(screen.getByPlaceholderText('Enter save name'),
+        { target: { value: 'Save 2' } }
+      );
+      fireEvent.click(screen.getByText('Save'));
+
+      // Verify both saves exist
+      const saves = JSON.parse(localStorage.getItem('chessGameSaves') || '[]');
+      expect(saves).toHaveLength(2);
+      expect(saves[0].name).toBe('Save 1');
+      expect(saves[1].name).toBe('Save 2');
+      expect(saves[1].state.moveHistory).toHaveLength(1);
+    });
   });
 });
 

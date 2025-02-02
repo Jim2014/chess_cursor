@@ -108,3 +108,72 @@
   width: 50px;
   height: 50px;
 }
+
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.dialog {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  min-width: 300px;
+}
+
+.dialog h3 {
+  margin-top: 0;
+}
+
+.dialog input {
+  width: 100%;
+  padding: 8px;
+  margin: 10px 0;
+}
+
+.dialog-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.saves-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.save-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.save-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.save-name {
+  font-weight: bold;
+}
+
+.save-date {
+  font-size: 0.8em;
+  color: #666;
+}
+
+.save-actions {
+  display: flex;
+  gap: 5px;
+}
