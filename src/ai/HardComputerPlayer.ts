@@ -1,4 +1,4 @@
-import { GameState, Move, Piece } from "../logic/types";
+import { GameState, Move, Piece, Position } from "../logic/types";
 import { isValidMove, isKingInCheck } from "../logic/ChessRulesEngine";
 
 const PIECE_VALUES = {
@@ -108,6 +108,14 @@ export class HardComputerPlayer {
 
     for (const move of moves) {
       const newState = this.makeMove(gameState, move);
+      if (this.isUnderAttack(newState, move.to, gameState.turn)) {
+        const movingPiece = gameState.board[move.from.row][move.from.col]!;
+        const targetPiece = gameState.board[move.to.row][move.to.col];
+        if (!targetPiece || PIECE_VALUES[targetPiece.type] <= PIECE_VALUES[movingPiece.type]) {
+          continue;
+        }
+      }
+
       const score = this.minimax(newState, this.settings.maxDepth - 1, alpha, beta, gameState.turn !== 'white');
 
       if (gameState.turn === 'white') {
@@ -173,42 +181,39 @@ export class HardComputerPlayer {
   }
 
   private evaluatePosition(gameState: GameState): number {
-    const { board } = gameState;
     let score = 0;
+    const { board } = gameState;
 
-    // Material and position evaluation
+    // Material and position score
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
         const piece = board[row][col];
         if (piece) {
+          // Base piece value
           const pieceValue = PIECE_VALUES[piece.type];
-          const positionValue = POSITION_VALUES[piece.type]?.[piece.color === 'white' ? row : 7 - row][col] || 0;
-          
-          // Check piece safety
-          const isAttacked = this.isUnderAttack(
-            { row, col },
-            board,
-            piece.color === 'white' ? 'black' : 'white'
-          );
+          // Position value based on piece type and color
+          const positionValue = piece.color === 'white'
+            ? POSITION_VALUES[piece.type][row][col]
+            : POSITION_VALUES[piece.type][7 - row][col];
 
-          if (piece.color === 'white') {
-            score += pieceValue + positionValue;
-            if (isAttacked) {
-              score -= pieceValue * 0.3;
-            }
-          } else {
-            score -= pieceValue + positionValue;
-            if (isAttacked) {
-              score += pieceValue * 0.3;
-            }
+          const multiplier = piece.color === 'white' ? 1 : -1;
+          score += (pieceValue + positionValue) * multiplier;
+        }
+      }
+    }
+
+    // Safety evaluation - check if pieces are under attack
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = board[row][col];
+        if (piece) {
+          // Check if this piece can be captured
+          if (this.isUnderAttack(gameState, { row, col }, piece.color)) {
+            const pieceValue = PIECE_VALUES[piece.type];
+            const multiplier = piece.color === 'white' ? -1 : 1;
+            // Penalize having pieces under attack
+            score += (pieceValue * 0.5) * multiplier;
           }
-
-          // Evaluate piece mobility
-          const mobilityScore = this.getPieceMobilityScore(gameState, { row, col });
-          score += piece.color === 'white' ? mobilityScore : -mobilityScore;
-
-          // Additional positional bonuses
-          score += this.getPositionalBonuses(gameState, piece, row, col);
         }
       }
     }
@@ -333,25 +338,24 @@ export class HardComputerPlayer {
     });
   }
 
-  private isUnderAttack(position: { row: number; col: number }, board: (Piece | null)[][], attackingColor: string): boolean {
+  private isUnderAttack(gameState: GameState, position: Position, pieceColor: 'white' | 'black'): boolean {
+    const opponentColor = pieceColor === 'white' ? 'black' : 'white';
+    
+    // Create a temporary game state to check opponent's moves
+    const tempGameState: GameState = {
+      ...gameState,
+      turn: opponentColor,
+      lastMove: null
+    };
+    
+    // Check all opponent pieces for possible captures
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
-        const piece = board[row][col];
-        if (piece && piece.color === attackingColor) {
+        const piece = gameState.board[row][col];
+        if (piece && piece.color === opponentColor) {
           const move: Move = {
             from: { row, col },
             to: position
-          };
-          const tempGameState: GameState = {
-            board,
-            turn: attackingColor,
-            lastMove: null,
-            castlingRights: {
-              white: { kingSide: true, queenSide: true },
-              black: { kingSide: true, queenSide: true }
-            },
-            isCheck: false,
-            moveHistory: []
           };
           if (isValidMove(tempGameState, move)) {
             return true;
@@ -359,6 +363,7 @@ export class HardComputerPlayer {
         }
       }
     }
+    
     return false;
   }
 
