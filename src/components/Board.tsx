@@ -266,8 +266,15 @@ const Board: React.FC = () => {
     for (let col = 0; col < 8; col++) {
       rowSquares.push(renderSquare(row, col));
     }
+
+    // Calculate the rank (number) for the row.
+    // Standard chess boards label the top row as 8, bottom as 1.
+    const rank = 8 - row;
+
+
     boardRows.push(
       <div key={row} className="board-row">
+        <div className="row-label">{rank}</div>
         {rowSquares}
       </div>
     );
@@ -275,7 +282,17 @@ const Board: React.FC = () => {
 
   return (
     <div>
-      <div className="board">{boardRows}</div>
+      <div className="board-container">
+        <div className="board-grid">
+          {boardRows}
+          <div className="column-labels">
+            <div className="column-label-empty"></div>
+            {['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((letter) => (
+              <div key={letter} className="column-label">{letter}</div>
+            ))}
+          </div>
+        </div>
+      </div>
       <div className="turn-indicator">Turn: {turn}</div>
       <div className="controls">
         <button className="reset-button" onClick={resetGame}>

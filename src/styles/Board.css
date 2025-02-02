@@ -3,8 +3,42 @@
   border: 2px solid #333;
 }
 
+.board-container {
+  display: flex;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.board-grid {
+  display: flex;
+  flex-direction: column;
+}
+
+.column-labels {
+  display: flex;
+  margin-top: 5px;
+}
+
+.column-label {
+  width: 50px; /* Should match the width of your chess squares */
+  text-align: center;
+  height: 20px;
+  line-height: 20px;
+}
+
+.column-label-empty {
+  width: 30px; /* Should match width of row-label + its margin-right */
+}
+
 .board-row {
-  display: flex;  /* This is essential to line up the squares horizontally */
+  display: flex;
+  align-items: center;
+}
+
+.row-label {
+  width: 20px;
+  text-align: center;
+  margin-right: 10px;
 }
 
 .turn-indicator {
@@ -37,4 +71,10 @@
   color: white;
   border: none;
   border-radius: 3px;
+}
+
+/* Add this to ensure squares are consistent size */
+.square {
+  width: 50px;
+  height: 50px;
 }
