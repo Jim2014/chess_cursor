@@ -488,7 +488,7 @@ const Board: React.FC = () => {
 
       if (isValidMove(gameState, move)) {
         console.log('Making move...');
-        makeMove(move);
+        handleMove(move);
         // If this was a castling move, update castling rights immediately
         if (isCastling) {
           console.log('Executing castling move');
@@ -774,6 +774,32 @@ const Board: React.FC = () => {
         )}
       </div>
     );
+  };
+
+  const handleMove = (move: Move) => {
+    const piece = board[move.from.row][move.from.col];
+    if (!piece) return;
+
+    // Check if it's a pawn promotion move
+    if (piece.type === 'pawn' && (move.to.row === 0 || move.to.row === 7)) {
+      // For computer players, automatically promote to queen
+      const isComputerMove = 
+        (gameSettings.gameMode === 'computer' && gameSettings.computerColor === turn) ||
+        (gameSettings.gameMode === 'computer-vs-computer');
+      
+      if (isComputerMove) {
+        move.promotion = 'queen';
+        makeMove(move);
+        return;
+      }
+      
+      // For human players, show promotion dialog
+      setPromotionSquare(move.to);
+      setPendingMove(move);
+      return;
+    }
+
+    makeMove(move);
   };
 
   return (
