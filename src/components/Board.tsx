@@ -441,11 +441,6 @@ const Board: React.FC = () => {
     setTurn(turn === "white" ? "black" : "white");
     setMoveHistory([...moveHistory, moveWithSnapshot]);
     setLastMove(move);
-
-    // If it's checkmate, show a message
-    if (isInCheckmate) {
-      alert(`Checkmate! ${turn} wins!`);
-    }
   };
 
   const handleSquareClick = (position: Position) => {
