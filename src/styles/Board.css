@@ -177,3 +177,7 @@
   display: flex;
   gap: 5px;
 }
+
+.square.check {
+  background-color: #ff4444 !important;
+}

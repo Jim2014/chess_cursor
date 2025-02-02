@@ -318,4 +318,4 @@ const simulateMove = (board: (Piece | null)[][], move: Move): (Piece | null)[][]
   return newBoard;
 };
 
-export { isInBounds };
+export { isInBounds, isKingInCheck, isCheckmate };

@@ -4,7 +4,7 @@ import MoveHistory from "./MoveHistory";
 import "../styles/Board.css";
 import { Position, Piece, Move, GameState, MoveWithSnapshot, BoardSnapshot, PromotionType } from "../logic/types";
 import { initialBoardSetup } from "../logic/GameManager";
-import { isValidMove } from "../logic/ChessRulesEngine";
+import { isValidMove, isKingInCheck, isCheckmate } from "../logic/ChessRulesEngine";
 import SaveGameDialog from './SaveGameDialog';
 import LoadGameDialog from './LoadGameDialog';
 import PromotionDialog from './PromotionDialog';
@@ -292,10 +292,24 @@ const Board: React.FC = () => {
       setCastlingRights(newRights);
     }
 
+    // Check for check and checkmate
+    const newGameState = createGameState(newBoard, turn === "white" ? "black" : "white", move);
+    const isInCheck = isKingInCheck(newBoard, turn === "white" ? "black" : "white");
+    const isInCheckmate = isInCheck && isCheckmate(newGameState, turn === "white" ? "black" : "white");
+    setIsCheck(isInCheck);
+
+    // Create move description with check/checkmate status
+    let moveDesc = getMoveDescription(move.from, move.to);
+    if (isInCheckmate) {
+      moveDesc += " #"; // Chess notation for checkmate
+    } else if (isInCheck) {
+      moveDesc += " +"; // Chess notation for check
+    }
+
     // Create move with snapshot
     const moveWithSnapshot: MoveWithSnapshot = {
       move,
-      description: getMoveDescription(move.from, move.to),
+      description: moveDesc,
       snapshot: currentSnapshot
     };
     
@@ -304,6 +318,11 @@ const Board: React.FC = () => {
     setTurn(turn === "white" ? "black" : "white");
     setMoveHistory([...moveHistory, moveWithSnapshot]);
     setLastMove(move);
+
+    // If it's checkmate, show a message
+    if (isInCheckmate) {
+      alert(`Checkmate! ${turn} wins!`);
+    }
   };
 
   const handleSquareClick = (position: Position) => {
@@ -544,6 +563,7 @@ const Board: React.FC = () => {
     const isAllowed = allowedMoves.some(
       (pos) => pos.row === row && pos.col === col
     );
+    const isKingInCheckSquare = isCheck && piece?.type === 'king' && piece.color === turn;
     return (
       <Square
         key={`${row}-${col}`}
@@ -552,6 +572,7 @@ const Board: React.FC = () => {
         onClick={handleSquareClick}
         isSelected={!!isSelected}
         allowed={isAllowed}
+        isCheck={isKingInCheckSquare}
       />
     );
   };
