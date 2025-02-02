@@ -1,5 +1,3 @@
-import { Storage } from 'window-or-global';
-
 const localStorageMock = (() => {
   let store: { [key: string]: string } = {};
 

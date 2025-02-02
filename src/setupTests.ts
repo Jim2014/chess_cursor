@@ -1,6 +1,18 @@
 import '@testing-library/jest-dom';
 import '@testing-library/jest-dom/extend-expect';
 
+// Suppress the deprecated ReactDOMTestUtils.act warning
+const originalError = console.error;
+console.error = (...args) => {
+  if (
+    typeof args[0] === 'string' &&
+    args[0].includes('ReactDOMTestUtils.act')
+  ) {
+    return;
+  }
+  originalError(...args);
+};
+
 // Add this to ensure window object is available
 if (typeof window === 'undefined') {
   global.window = {} as any;

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import Square from "./Square";
 import MoveHistory from "./MoveHistory";
 import "../styles/Board.css";
-import { Position, Piece, Move, GameState } from "../logic/types";
+import { Position, Piece, Move, GameState, MoveWithSnapshot, BoardSnapshot, PromotionType } from "../logic/types";
 import { initialBoardSetup } from "../logic/GameManager";
 import { isValidMove } from "../logic/ChessRulesEngine";
 import SaveGameDialog from './SaveGameDialog';
@@ -11,18 +11,28 @@ import LoadGameDialog from './LoadGameDialog';
 interface SavedGame {
   name: string;
   date: string;
-  state: GameState;
+  state: {
+    board: (Piece | null)[][];
+    turn: "white" | "black";
+    castlingRights: {
+      white: { kingSide: boolean; queenSide: boolean };
+      black: { kingSide: boolean; queenSide: boolean };
+    };
+    isCheck: boolean;
+    lastMove: Move | null;
+    moveHistory: MoveWithSnapshot[];
+  };
 }
 
 const createGameState = (board: (Piece | null)[][], turn: "white" | "black" = "white"): GameState => ({
   board,
+  turn,
   lastMove: null,
   castlingRights: {
     white: { kingSide: true, queenSide: true },
     black: { kingSide: true, queenSide: true }
   },
   isCheck: false,
-  turn,
   moveHistory: []
 });
 
@@ -48,11 +58,11 @@ const Board: React.FC = () => {
   const [selectedPosition, setSelectedPosition] = useState<Position | null>(null);
   const [allowedMoves, setAllowedMoves] = useState<Position[]>([]);
   const [turn, setTurn] = useState<"white" | "black">("white");
-  const [moveHistory, setMoveHistory] = useState<Move[]>([]);
+  const [moveHistory, setMoveHistory] = useState<MoveWithSnapshot[]>([]);
 
   // Undo/redo stacks
-  const [undoStack, setUndoStack] = useState<GameState[]>([]);
-  const [redoStack, setRedoStack] = useState<GameState[]>([]);
+  const [undoStack, setUndoStack] = useState<MoveWithSnapshot[]>([]);
+  const [redoStack, setRedoStack] = useState<MoveWithSnapshot[]>([]);
 
   // Add these state variables
   const [lastMove, setLastMove] = useState<Move | null>(null);
@@ -66,6 +76,10 @@ const Board: React.FC = () => {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showLoadDialog, setShowLoadDialog] = useState(false);
   const [savedGames, setSavedGames] = useState<SavedGame[]>([]);
+
+  // Add these state variables at the top with other state declarations
+  const [promotionSquare, setPromotionSquare] = useState<Position | null>(null);
+  const [showPromotionDialog, setShowPromotionDialog] = useState(false);
 
   // Load saved games list on component mount
   useEffect(() => {
@@ -90,18 +104,21 @@ const Board: React.FC = () => {
     return moves;
   };
 
-  // Save current game state to the undo stack and clear the redo stack.
-  const pushCurrentStateToUndoStack = () => {
-    const currentState: GameState = {
-      board,
-      turn,
-      moveHistory,
-      lastMove,
-      castlingRights,
-      isCheck
-    };
-    setUndoStack([...undoStack, currentState]);
-    setRedoStack([]); // Clear redo history on a new move.
+  const createBoardSnapshot = (): BoardSnapshot => ({
+    board: board.map(row => [...row]),
+    turn,
+    castlingRights: {
+      white: { ...castlingRights.white },
+      black: { ...castlingRights.black }
+    },
+    isCheck,
+    lastMove
+  });
+
+  const getMoveDescription = (from: Position, to: Position): string => {
+    const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+    const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
+    return `${files[from.col]}${ranks[from.row]} → ${files[to.col]}${ranks[to.row]}`;
   };
 
   const handleSquareClick = (position: Position) => {
@@ -124,8 +141,8 @@ const Board: React.FC = () => {
       );
       if (isAllowed) {
         // Before performing the move, push the current state to the undo stack.
-        pushCurrentStateToUndoStack();
-
+        const currentSnapshot = createBoardSnapshot();
+        
         // Execute the move.
         const move: Move = { from: selectedPosition, to: position };
         const newBoard = board.map((row) => row.slice());
@@ -133,12 +150,18 @@ const Board: React.FC = () => {
         newBoard[selectedPosition.row][selectedPosition.col] = null;
         setBoard(newBoard);
 
+        // Create move with snapshot
+        const moveWithSnapshot: MoveWithSnapshot = {
+          move,
+          description: getMoveDescription(selectedPosition, position),
+          snapshot: currentSnapshot
+        };
+        
         // Update move history and switch turn.
-        setMoveHistory([...moveHistory, move]);
+        setMoveHistory([...moveHistory, moveWithSnapshot]);
         setTurn(turn === "white" ? "black" : "white");
         setSelectedPosition(null);
         setAllowedMoves([]);
-        return;
       } else {
         // If clicking on another piece of the same color, update the selection.
         if (clickedPiece && clickedPiece.color === turn) {
@@ -156,26 +179,19 @@ const Board: React.FC = () => {
 
   // Undo: Restore the previous game state.
   const handleUndo = () => {
-    if (undoStack.length === 0) return;
-    const currentState: GameState = {
-      board,
-      turn,
-      moveHistory,
-      lastMove,
-      castlingRights,
-      isCheck
-    };
-    const lastState = undoStack[undoStack.length - 1];
-    setUndoStack(undoStack.slice(0, -1));
-    setRedoStack([...redoStack, currentState]);
-
+    if (moveHistory.length === 0) return;
+    
+    const lastMove = moveHistory[moveHistory.length - 1];
+    const previousSnapshot = lastMove.snapshot;
+    
+    setRedoStack([...redoStack, lastMove]);
+    setMoveHistory(moveHistory.slice(0, -1));
+    
     // Restore the previous state
-    setBoard(lastState.board);
-    setTurn(lastState.turn);
-    setMoveHistory(lastState.moveHistory);
-    setLastMove(lastState.lastMove);
-    setCastlingRights(lastState.castlingRights);
-    setIsCheck(lastState.isCheck);
+    setBoard(previousSnapshot.board);
+    setTurn(previousSnapshot.turn);
+    setCastlingRights(previousSnapshot.castlingRights);
+    setIsCheck(previousSnapshot.isCheck);
     setSelectedPosition(null);
     setAllowedMoves([]);
   };
@@ -183,25 +199,30 @@ const Board: React.FC = () => {
   // Redo: Restore the state from the redo stack.
   const handleRedo = () => {
     if (redoStack.length === 0) return;
-    const currentState: GameState = {
-      board,
-      turn,
-      moveHistory,
-      lastMove,
-      castlingRights,
-      isCheck
-    };
-    const nextState = redoStack[redoStack.length - 1];
+    
+    const nextMove = redoStack[redoStack.length - 1];
+    
+    // Make the move
+    const newBoard = board.map(row => [...row]);
+    newBoard[nextMove.move.to.row][nextMove.move.to.col] = 
+      newBoard[nextMove.move.from.row][nextMove.move.from.col];
+    newBoard[nextMove.move.from.row][nextMove.move.from.col] = null;
+    
+    // Handle promotion if present
+    if (nextMove.move.promotion) {
+      newBoard[nextMove.move.to.row][nextMove.move.to.col] = {
+        type: nextMove.move.promotion,
+        color: turn
+      };
+    }
+    
+    setMoveHistory([...moveHistory, nextMove]);
     setRedoStack(redoStack.slice(0, -1));
-    setUndoStack([...undoStack, currentState]);
-
-    // Restore the next state
-    setBoard(nextState.board);
-    setTurn(nextState.turn);
-    setMoveHistory(nextState.moveHistory);
-    setLastMove(nextState.lastMove);
-    setCastlingRights(nextState.castlingRights);
-    setIsCheck(nextState.isCheck);
+    
+    // Apply the new state
+    setBoard(newBoard);
+    setTurn(turn === "white" ? "black" : "white");
+    setLastMove(nextMove.move);
     setSelectedPosition(null);
     setAllowedMoves([]);
   };
@@ -229,10 +250,10 @@ const Board: React.FC = () => {
       state: {
         board,
         turn,
-        moveHistory,
-        lastMove,
         castlingRights,
-        isCheck
+        isCheck,
+        lastMove,
+        moveHistory
       }
     };
     
@@ -247,21 +268,23 @@ const Board: React.FC = () => {
     const savedGame = savedGames.find(save => save.name === name);
     if (savedGame) {
       try {
+        // Load the game state
         const gameState = savedGame.state;
-        setUndoStack([]);
-        setRedoStack([]);
+        setMoveHistory(gameState.moveHistory);
         setBoard(gameState.board);
         setTurn(gameState.turn);
-        setMoveHistory(gameState.moveHistory);
-        setLastMove(gameState.lastMove);
         setCastlingRights(gameState.castlingRights);
         setIsCheck(gameState.isCheck);
+        setLastMove(gameState.lastMove);
+        
+        // Initialize undo stack with the initial state from the first move's snapshot
+        if (gameState.moveHistory.length > 0) {
+          setUndoStack([gameState.moveHistory[0]]);
+          setRedoStack([]);
+        }
+        
         setSelectedPosition(null);
         setAllowedMoves([]);
-        
-        setTimeout(() => {
-          setBoard(prev => [...prev]);
-        }, 0);
         setShowLoadDialog(false);
       } catch (error) {
         console.error('Error loading game state:', error);
@@ -274,6 +297,38 @@ const Board: React.FC = () => {
     const newSaves = savedGames.filter(save => save.name !== name);
     localStorage.setItem('chessGameSaves', JSON.stringify(newSaves));
     setSavedGames(newSaves);
+  };
+
+  const handlePromotion = (newType: string) => {
+    if (!selectedPosition || !promotionSquare) return;
+
+    const promotionMove: Move = {
+      from: selectedPosition,
+      to: promotionSquare,
+      promotion: newType as PromotionType
+    };
+
+    const newBoard = board.map((row) => row.slice());
+    newBoard[promotionSquare.row][promotionSquare.col] = {
+      type: newType as PromotionType,
+      color: turn
+    };
+    newBoard[selectedPosition.row][selectedPosition.col] = null;
+
+    // Create move with snapshot
+    const currentSnapshot = createBoardSnapshot();
+    const moveWithSnapshot: MoveWithSnapshot = {
+      move: promotionMove,
+      description: getMoveDescription(selectedPosition, promotionSquare),
+      snapshot: currentSnapshot
+    };
+
+    setBoard(newBoard);
+    setTurn(turn === "white" ? "black" : "white");
+    setMoveHistory([...moveHistory, moveWithSnapshot]);
+    setSelectedPosition(null);
+    setPromotionSquare(null);
+    setShowPromotionDialog(false);
   };
 
   const renderSquare = (row: number, col: number) => {

@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Board from '../../components/Board';
 import { initialBoardSetup } from '../../logic/GameManager';
-import { act } from 'react-dom/test-utils';
+import { act } from 'react';
 
 // Clear localStorage before each test
 beforeEach(() => {
@@ -236,6 +236,72 @@ describe('Board Component', () => {
       expect(saves[0].name).toBe('Save 1');
       expect(saves[1].name).toBe('Save 2');
       expect(saves[1].state.moveHistory).toHaveLength(1);
+    });
+
+    test('maintains undo/redo functionality after loading a saved game', async () => {
+      // First save a game with one move
+      const initialBoard = initialBoardSetup();
+      // Move a pawn from a2 to a4
+      initialBoard[4][0] = initialBoard[6][0];  // Move pawn to a4
+      initialBoard[6][0] = null;  // Clear original position
+
+      const savedGame = {
+        name: 'Test Save',
+        date: new Date().toLocaleString(),
+        state: {
+          board: initialBoard,
+          turn: 'black',
+          moveHistory: [{
+            move: { from: { row: 6, col: 0 }, to: { row: 4, col: 0 } },
+            description: 'a2 → a4',
+            snapshot: {
+              board: initialBoardSetup(),
+              turn: 'white',
+              castlingRights: {
+                white: { kingSide: true, queenSide: true },
+                black: { kingSide: true, queenSide: true }
+              },
+              isCheck: false,
+              lastMove: null
+            }
+          }],
+          lastMove: { from: { row: 6, col: 0 }, to: { row: 4, col: 0 } },
+          castlingRights: {
+            white: { kingSide: true, queenSide: true },
+            black: { kingSide: true, queenSide: true }
+          },
+          isCheck: false
+        }
+      };
+      localStorage.setItem('chessGameSaves', JSON.stringify([savedGame]));
+
+      const { container } = render(<Board />);
+
+      // Reset the game
+      fireEvent.click(screen.getByText('Reset Game'));
+
+      // Load the saved game
+      fireEvent.click(screen.getByText('Load Game'));
+      fireEvent.click(screen.getByText('Load'));
+
+      // Wait for the game to load - should be in initial position
+      await waitFor(() => {
+        expect(screen.getByText('Turn: black')).toBeInTheDocument();
+        const squares = container.querySelectorAll('.square');
+        expect(squares[32].querySelector('.piece')?.textContent).toBe('♙');  // a4 has pawn
+        expect(squares[48].querySelector('.piece')).toBeNull();  // a2 is empty
+      });
+
+      // Try to undo
+      fireEvent.click(screen.getByText('Undo'));
+
+      // Verify that we returned to the initial position
+      await waitFor(() => {
+        expect(screen.getByText('Turn: white')).toBeInTheDocument();
+        const squares = container.querySelectorAll('.square');
+        expect(squares[48].querySelector('.piece')?.textContent).toBe('♙');  // a2 has pawn
+        expect(squares[32].querySelector('.piece')).toBeNull();  // a4 is empty
+      });
     });
   });
 });
