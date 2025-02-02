@@ -93,14 +93,21 @@ const Board: React.FC = () => {
   const [gameSettings, setGameSettings] = useState<GameSettings>({
     gameMode: 'human',
     computerColor: 'black',
-    difficulty: 'easy'
+    whitePlayerLevel: 'easy',
+    blackPlayerLevel: 'easy'
   });
   
-  const computerPlayer = useMemo(() => {
-    return gameSettings.difficulty === 'easy' 
+  const whiteComputerPlayer = useMemo(() => {
+    return gameSettings.whitePlayerLevel === 'easy' 
       ? new ComputerPlayer()
       : new MediumComputerPlayer();
-  }, [gameSettings.difficulty]);
+  }, [gameSettings.whitePlayerLevel]);
+  
+  const blackComputerPlayer = useMemo(() => {
+    return gameSettings.blackPlayerLevel === 'easy' 
+      ? new ComputerPlayer()
+      : new MediumComputerPlayer();
+  }, [gameSettings.blackPlayerLevel]);
 
   // Load saved games list on component mount
   useEffect(() => {
@@ -112,19 +119,21 @@ const Board: React.FC = () => {
 
   // Update computer move effect
   useEffect(() => {
-    if (gameSettings.gameMode === 'computer' && 
-        turn === gameSettings.computerColor && 
+    if ((gameSettings.gameMode === 'computer-vs-computer' ||
+        (gameSettings.gameMode === 'computer' && turn === gameSettings.computerColor)) &&
         !promotionSquare && 
         !isInCheckmate) {
       const timer = setTimeout(() => {
         const gameState = createGameState(board, turn, lastMove);
         gameState.castlingRights = castlingRights;
-        const move = computerPlayer.getBestMove(gameState);
+        const move = turn === 'white' 
+          ? whiteComputerPlayer.getBestMove(gameState)
+          : blackComputerPlayer.getBestMove(gameState);
         if (move) {
           setComputerLastMove(move);
           makeMove(move);
         }
-      }, 500);
+      }, gameSettings.gameMode === 'computer-vs-computer' ? 1000 : 500);
       
       return () => clearTimeout(timer);
     }
@@ -366,12 +375,8 @@ const Board: React.FC = () => {
   };
 
   const handleSquareClick = (position: Position) => {
-    if (gameSettings.gameMode === 'computer' && 
-        turn === gameSettings.computerColor && 
-        !promotionSquare && 
-        !isInCheckmate) {
-      return;
-    }
+    if (gameSettings.gameMode === 'computer-vs-computer' || 
+        (gameSettings.gameMode === 'computer' && turn === gameSettings.computerColor)) return;
     if (selectedPosition) {
       const move: Move = {
         from: selectedPosition,

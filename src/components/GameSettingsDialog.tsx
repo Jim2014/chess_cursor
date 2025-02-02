@@ -7,16 +7,18 @@ interface GameSettingsDialogProps {
 }
 
 export interface GameSettings {
-  gameMode: 'human' | 'computer';
-  computerColor: 'white' | 'black';
-  difficulty: 'easy' | 'medium';
+  gameMode: 'human' | 'computer' | 'computer-vs-computer';
+  computerColor: 'white' | 'black';  // Only used in human vs computer mode
+  whitePlayerLevel: 'easy' | 'medium';  // Used for white player in computer vs computer
+  blackPlayerLevel: 'easy' | 'medium';  // Used for black player in computer vs computer
 }
 
 const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ onStart, onCancel }) => {
   const [settings, setSettings] = useState<GameSettings>({
     gameMode: 'human',
     computerColor: 'black',
-    difficulty: 'easy'
+    whitePlayerLevel: 'easy',
+    blackPlayerLevel: 'easy'
   });
 
   return (
@@ -30,11 +32,12 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ onStart, onCanc
             value={settings.gameMode}
             onChange={(e) => setSettings({
               ...settings,
-              gameMode: e.target.value as 'human' | 'computer'
+              gameMode: e.target.value as GameSettings['gameMode']
             })}
           >
             <option value="human">Human vs Human</option>
-            <option value="computer">vs Computer</option>
+            <option value="computer">Human vs Computer</option>
+            <option value="computer-vs-computer">Computer vs Computer</option>
           </select>
         </div>
 
@@ -55,12 +58,48 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ onStart, onCanc
             </div>
 
             <div className="settings-group">
-              <label>Difficulty:</label>
+              <label>Computer Level:</label>
               <select
-                value={settings.difficulty}
+                value={settings.computerColor === 'white' ? settings.whitePlayerLevel : settings.blackPlayerLevel}
+                onChange={(e) => {
+                  const level = e.target.value as 'easy' | 'medium';
+                  setSettings({
+                    ...settings,
+                    whitePlayerLevel: settings.computerColor === 'white' ? level : settings.whitePlayerLevel,
+                    blackPlayerLevel: settings.computerColor === 'black' ? level : settings.blackPlayerLevel
+                  });
+                }}
+              >
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+              </select>
+            </div>
+          </>
+        )}
+
+        {settings.gameMode === 'computer-vs-computer' && (
+          <>
+            <div className="settings-group">
+              <label>White Player Level:</label>
+              <select
+                value={settings.whitePlayerLevel}
                 onChange={(e) => setSettings({
                   ...settings,
-                  difficulty: e.target.value as 'easy' | 'medium'
+                  whitePlayerLevel: e.target.value as 'easy' | 'medium'
+                })}
+              >
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+              </select>
+            </div>
+
+            <div className="settings-group">
+              <label>Black Player Level:</label>
+              <select
+                value={settings.blackPlayerLevel}
+                onChange={(e) => setSettings({
+                  ...settings,
+                  blackPlayerLevel: e.target.value as 'easy' | 'medium'
                 })}
               >
                 <option value="easy">Easy</option>
