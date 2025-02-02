@@ -108,9 +108,13 @@ export class HardComputerPlayer {
 
     for (const move of moves) {
       const newState = this.makeMove(gameState, move);
-      if (this.isUnderAttack(newState, move.to, gameState.turn)) {
-        const movingPiece = gameState.board[move.from.row][move.from.col]!;
-        const targetPiece = gameState.board[move.to.row][move.to.col];
+      const movingPiece = gameState.board[move.from.row][move.from.col]!;
+      const targetPiece = gameState.board[move.to.row][move.to.col];
+
+      // Check if the move puts our piece in danger and it's not protected
+      if (this.isUnderAttack(newState, move.to, gameState.turn) && 
+          !this.isPieceProtected(newState, move.to, gameState.turn)) {
+        // Only allow the move if we're capturing a more valuable piece
         if (!targetPiece || PIECE_VALUES[targetPiece.type] <= PIECE_VALUES[movingPiece.type]) {
           continue;
         }
@@ -184,6 +188,9 @@ export class HardComputerPlayer {
     let score = 0;
     const { board } = gameState;
 
+    // Track threatened pieces that need protection
+    const threatenedPieces: Position[] = [];
+
     // Material and position score
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
@@ -198,21 +205,38 @@ export class HardComputerPlayer {
 
           const multiplier = piece.color === 'white' ? 1 : -1;
           score += (pieceValue + positionValue) * multiplier;
+
+          // Check if piece is under attack
+          if (this.isUnderAttack(gameState, { row, col }, piece.color)) {
+            // For king, heavily penalize being under attack
+            if (piece.type === 'king') {
+              score += -5000 * multiplier;
+            } else {
+              // For other pieces, check if they're protected
+              const isProtected = this.isPieceProtected(gameState, { row, col }, piece.color);
+              if (!isProtected) {
+                // Penalize unprotected pieces under attack
+                score += -(pieceValue * 0.8) * multiplier;
+                threatenedPieces.push({ row, col });
+              } else {
+                // Small penalty for protected pieces under attack
+                score += -(pieceValue * 0.2) * multiplier;
+              }
+            }
+          }
         }
       }
     }
 
-    // Safety evaluation - check if pieces are under attack
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        const piece = board[row][col];
-        if (piece) {
-          // Check if this piece can be captured
-          if (this.isUnderAttack(gameState, { row, col }, piece.color)) {
-            const pieceValue = PIECE_VALUES[piece.type];
-            const multiplier = piece.color === 'white' ? -1 : 1;
-            // Penalize having pieces under attack
-            score += (pieceValue * 0.5) * multiplier;
+    // Evaluate moves that protect threatened pieces
+    if (threatenedPieces.length > 0) {
+      const currentTurn = gameState.turn;
+      for (const pos of threatenedPieces) {
+        const piece = board[pos.row][pos.col]!;
+        if (piece.color === currentTurn) {
+          // Bonus for moves that protect threatened pieces
+          if (this.canProtectPiece(gameState, pos)) {
+            score += (PIECE_VALUES[piece.type] * 0.4) * (piece.color === 'white' ? 1 : -1);
           }
         }
       }
@@ -403,5 +427,64 @@ export class HardComputerPlayer {
       turn: gameState.turn === 'white' ? 'black' : 'white',
       lastMove: move
     };
+  }
+
+  // Check if a piece is protected by friendly pieces
+  private isPieceProtected(gameState: GameState, position: Position, pieceColor: 'white' | 'black'): boolean {
+    // Create a temporary game state to check friendly moves
+    const tempGameState: GameState = {
+      ...gameState,
+      turn: pieceColor,
+      lastMove: null
+    };
+
+    // Check if any friendly piece can move to this position
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = gameState.board[row][col];
+        if (piece && piece.color === pieceColor && (row !== position.row || col !== position.col)) {
+          const move: Move = {
+            from: { row, col },
+            to: position
+          };
+          // Check if the piece could theoretically capture here (meaning it protects the square)
+          if (isValidMove({ ...tempGameState, board: this.getBoardWithoutPiece(gameState.board, position) }, move)) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  // Check if we can move other pieces to protect a threatened piece
+  private canProtectPiece(gameState: GameState, position: Position): boolean {
+    const piece = gameState.board[position.row][position.col];
+    if (!piece) return false;
+
+    // Get all valid moves
+    const moves = this.getAllValidMoves(gameState);
+
+    // Try each move and see if it results in the piece being protected
+    for (const move of moves) {
+      // Skip moves of the threatened piece itself
+      if (move.from.row === position.row && move.from.col === position.col) continue;
+
+      const newState = this.makeMove(gameState, move);
+      
+      // Check if the piece is still under attack but now protected after this move
+      if (this.isUnderAttack(newState, position, piece.color) && 
+          this.isPieceProtected(newState, position, piece.color)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Helper to get board state without a piece (for checking protection)
+  private getBoardWithoutPiece(board: (Piece | null)[][], position: Position): (Piece | null)[][] {
+    const newBoard = board.map(row => [...row]);
+    newBoard[position.row][position.col] = null;
+    return newBoard;
   }
 } 
