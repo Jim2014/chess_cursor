@@ -11,6 +11,7 @@ interface SquareProps {
   isSelected?: boolean;
   allowed?: boolean;
   isCheck?: boolean;
+  isComputerMove?: boolean;
 }
 
 const Square: React.FC<SquareProps> = ({
@@ -19,7 +20,8 @@ const Square: React.FC<SquareProps> = ({
   onClick,
   isSelected = false,
   allowed = false,
-  isCheck
+  isCheck,
+  isComputerMove
 }) => {
   const isDark = (position.row + position.col) % 2 === 1;
   let squareClass = isDark ? "square dark" : "square light";
@@ -31,6 +33,9 @@ const Square: React.FC<SquareProps> = ({
   }
   if (isCheck) {
     squareClass += " check";
+  }
+  if (isComputerMove) {
+    squareClass += " computer-move";
   }
   return (
     <div className={squareClass} onClick={() => onClick(position)}>

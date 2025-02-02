@@ -9,6 +9,8 @@ import SaveGameDialog from './SaveGameDialog';
 import LoadGameDialog from './LoadGameDialog';
 import PromotionDialog from './PromotionDialog';
 import { ComputerPlayer } from "../ai/ComputerPlayer";
+import GameSettingsDialog, { GameSettings } from './GameSettingsDialog';
+import { MediumComputerPlayer } from '../ai/MediumComputerPlayer';
 
 interface SavedGame {
   name: string;
@@ -74,6 +76,7 @@ const Board: React.FC = () => {
   });
   const [isCheck, setIsCheck] = useState(false);
   const [isInCheckmate, setIsInCheckmate] = useState(false);
+  const [computerLastMove, setComputerLastMove] = useState<Move | null>(null);
 
   // New state variables
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -86,9 +89,18 @@ const Board: React.FC = () => {
   const [pendingMove, setPendingMove] = useState<{ from: Position; to: Position } | null>(null);
 
   // Add these new state variables
-  const [isVsComputer, setIsVsComputer] = useState(false);
-  const [computerColor, setComputerColor] = useState<"black" | "white">("black");
-  const computerPlayer = useMemo(() => new ComputerPlayer(), []);
+  const [showSettings, setShowSettings] = useState(false);
+  const [gameSettings, setGameSettings] = useState<GameSettings>({
+    gameMode: 'human',
+    computerColor: 'black',
+    difficulty: 'easy'
+  });
+  
+  const computerPlayer = useMemo(() => {
+    return gameSettings.difficulty === 'easy' 
+      ? new ComputerPlayer()
+      : new MediumComputerPlayer();
+  }, [gameSettings.difficulty]);
 
   // Load saved games list on component mount
   useEffect(() => {
@@ -98,22 +110,25 @@ const Board: React.FC = () => {
     }
   }, []);
 
-  // Handle computer's move
+  // Update computer move effect
   useEffect(() => {
-    if (isVsComputer && turn === computerColor && !promotionSquare && !isInCheckmate) {
-      // Add a small delay to make it feel more natural
+    if (gameSettings.gameMode === 'computer' && 
+        turn === gameSettings.computerColor && 
+        !promotionSquare && 
+        !isInCheckmate) {
       const timer = setTimeout(() => {
         const gameState = createGameState(board, turn, lastMove);
         gameState.castlingRights = castlingRights;
         const move = computerPlayer.getBestMove(gameState);
-        if (move) {  // Only make move if one is available
+        if (move) {
+          setComputerLastMove(move);
           makeMove(move);
         }
       }, 500);
       
       return () => clearTimeout(timer);
     }
-  }, [turn, isVsComputer, computerColor, board, lastMove, isInCheckmate]);
+  }, [gameSettings.gameMode, turn, gameSettings.computerColor, board, lastMove, isInCheckmate]);
 
   // Compute allowed moves for the selected piece.
   const computeAllowedMoves = (position: Position): Position[] => {
@@ -351,7 +366,12 @@ const Board: React.FC = () => {
   };
 
   const handleSquareClick = (position: Position) => {
-    if (isVsComputer && turn === computerColor) return;
+    if (gameSettings.gameMode === 'computer' && 
+        turn === gameSettings.computerColor && 
+        !promotionSquare && 
+        !isInCheckmate) {
+      return;
+    }
     if (selectedPosition) {
       const move: Move = {
         from: selectedPosition,
@@ -522,6 +542,7 @@ const Board: React.FC = () => {
     setIsInCheckmate(false);
     setUndoStack([]);
     setRedoStack([]);
+    setComputerLastMove(null);
   };
 
   const handleSaveGame = (name: string) => {
@@ -592,6 +613,10 @@ const Board: React.FC = () => {
       (pos) => pos.row === row && pos.col === col
     );
     const isKingInCheckSquare = isCheck && piece?.type === 'king' && piece.color === turn;
+    const isComputerMoveSquare = !!computerLastMove && 
+      ((computerLastMove.from.row === row && computerLastMove.from.col === col) ||
+       (computerLastMove.to.row === row && computerLastMove.to.col === col));
+
     return (
       <Square
         key={`${row}-${col}`}
@@ -601,6 +626,7 @@ const Board: React.FC = () => {
         isSelected={!!isSelected}
         allowed={isAllowed}
         isCheck={isKingInCheckSquare}
+        isComputerMove={isComputerMoveSquare}
       />
     );
   };
@@ -625,18 +651,15 @@ const Board: React.FC = () => {
     );
   }
 
-  // Add controls for computer player
+  // Update game controls
   const renderGameControls = () => (
     <div className="controls">
-      <button onClick={resetGame}>Reset Game</button>
-      <button onClick={() => setIsVsComputer(!isVsComputer)}>
-        {isVsComputer ? "vs Human" : "vs Computer"}
+      <button onClick={() => {
+        resetGame();
+        setShowSettings(true);
+      }}>
+        New Game
       </button>
-      {isVsComputer && (
-        <button onClick={() => setComputerColor(computerColor === "white" ? "black" : "white")}>
-          Play as {computerColor === "white" ? "Black" : "White"}
-        </button>
-      )}
       <button className="save-button" onClick={() => setShowSaveDialog(true)}>
         Save Game
       </button>
@@ -690,6 +713,15 @@ const Board: React.FC = () => {
         <PromotionDialog
           color={turn}
           onSelect={handlePromotion}
+        />
+      )}
+      {showSettings && (
+        <GameSettingsDialog
+          onStart={(settings) => {
+            setGameSettings(settings);
+            setShowSettings(false);
+          }}
+          onCancel={() => setShowSettings(false)}
         />
       )}
     </div>
