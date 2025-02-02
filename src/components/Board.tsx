@@ -93,13 +93,73 @@ const Board: React.FC = () => {
 
   // Compute allowed moves for the selected piece.
   const computeAllowedMoves = (position: Position): Position[] => {
+    const piece = board[position.row][position.col];
+    if (!piece) return [];
+
     const moves: Position[] = [];
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        const move: Move = { from: position, to: { row, col } };
-        const gameState = createGameState(board, turn);
-        if (isValidMove(gameState, move)) {
-          moves.push({ row, col });
+    const gameState = createGameState(board, turn);
+    gameState.castlingRights = castlingRights;
+
+    // For king, only show normal one-square moves and valid castling moves
+    if (piece.type === 'king') {
+      // Normal king moves (one square in any direction)
+      const directions = [
+        [-1, -1], [-1, 0], [-1, 1],
+        [0, -1],          [0, 1],
+        [1, -1],  [1, 0],  [1, 1]
+      ];
+      
+      for (const [dRow, dCol] of directions) {
+        const newRow = position.row + dRow;
+        const newCol = position.col + dCol;
+        if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+          const move: Move = { from: position, to: { row: newRow, col: newCol } };
+          if (isValidMove(gameState, move)) {
+            moves.push({ row: newRow, col: newCol });
+          }
+        }
+      }
+
+      // Castling moves
+      const row = piece.color === 'white' ? 7 : 0;
+      // Kingside castling
+      if (castlingRights[turn].kingSide) {
+        const kingsideCastling: Move = { 
+          from: position, 
+          to: { row, col: position.col + 2 } 
+        };
+        console.log('Checking kingside castling:', {
+          from: kingsideCastling.from,
+          to: kingsideCastling.to,
+          isValid: isValidMove(gameState, kingsideCastling)
+        });
+        if (isValidMove(gameState, kingsideCastling)) {
+          moves.push({ row, col: position.col + 2 });
+        }
+      }
+      // Queenside castling
+      if (castlingRights[turn].queenSide) {
+        const queensideCastling: Move = { 
+          from: position, 
+          to: { row, col: position.col - 2 } 
+        };
+        console.log('Checking queenside castling:', {
+          from: queensideCastling.from,
+          to: queensideCastling.to,
+          isValid: isValidMove(gameState, queensideCastling)
+        });
+        if (isValidMove(gameState, queensideCastling)) {
+          moves.push({ row, col: position.col - 2 });
+        }
+      }
+    } else {
+      // For all other pieces, keep the existing logic
+      for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+          const move: Move = { from: position, to: { row, col } };
+          if (isValidMove(gameState, move)) {
+            moves.push({ row, col });
+          }
         }
       }
     }
@@ -124,13 +184,58 @@ const Board: React.FC = () => {
   };
 
   const makeMove = (move: Move) => {
-    // Before performing the move, create a snapshot of the current state
     const currentSnapshot = createBoardSnapshot();
-    
-    // Execute the move
     const newBoard = board.map((row) => row.slice());
+    
+    // Handle castling
+    const piece = board[move.from.row][move.from.col];
+    if (piece?.type === 'king') {
+      const isCastling = Math.abs(move.to.col - move.from.col) === 2;
+      if (isCastling) {
+        // Move rook
+        const isKingside = move.to.col > move.from.col;
+        const rookFromCol = isKingside ? 7 : 0;
+        const rookToCol = isKingside ? move.to.col - 1 : move.to.col + 1;
+        const rookRow = move.from.row;  // Same row as king
+        console.log('Castling details:', {
+          isKingside,
+          rookFromCol,
+          rookToCol,
+          rookRow,
+          rookPiece: newBoard[rookRow][rookFromCol]?.type,
+          kingPiece: piece.type
+        });
+        newBoard[rookRow][rookToCol] = newBoard[rookRow][rookFromCol];
+        newBoard[rookRow][rookFromCol] = null;
+      }
+    }
+    
+    console.log('Board state before move:', {
+      fromPiece: board[move.from.row][move.from.col]?.type,
+      toPiece: board[move.to.row][move.to.col]?.type
+    });
+    
+    // Move the piece
     newBoard[move.to.row][move.to.col] = board[move.from.row][move.from.col];
     newBoard[move.from.row][move.from.col] = null;
+
+    console.log('Board state after move:', {
+      fromPiece: newBoard[move.from.row][move.from.col]?.type,
+      toPiece: newBoard[move.to.row][move.to.col]?.type
+    });
+
+    // Update castling rights
+    if (piece?.type === 'king') {
+      const newRights = { ...castlingRights };
+      newRights[turn].kingSide = false;
+      newRights[turn].queenSide = false;
+      setCastlingRights(newRights);
+    } else if (piece?.type === 'rook') {
+      const newRights = { ...castlingRights };
+      if (move.from.col === 0) newRights[turn].queenSide = false;
+      if (move.from.col === 7) newRights[turn].kingSide = false;
+      setCastlingRights(newRights);
+    }
 
     // Create move with snapshot
     const moveWithSnapshot: MoveWithSnapshot = {
@@ -153,32 +258,52 @@ const Board: React.FC = () => {
         to: position
       };
 
-      // Check if this is a pawn promotion move
       const piece = board[selectedPosition.row][selectedPosition.col];
-      const isPromotion = piece?.type === 'pawn' && 
-        ((piece.color === 'white' && position.row === 0) || 
-         (piece.color === 'black' && position.row === 7));
-      
-      if (isPromotion) {
-        setPromotionSquare(position);
-        setPendingMove({ from: selectedPosition, to: position });
-        setSelectedPosition(null);
-        setAllowedMoves([]);
-        return;
-      }
+      const isCastling = piece?.type === 'king' && 
+        Math.abs(position.col - selectedPosition.col) === 2;
 
-      if (isValidMove(createGameState(board, turn), move)) {
+      console.log('Attempting move:', {
+        piece: piece?.type,
+        from: selectedPosition,
+        to: position,
+        isCastling,
+        turn
+      });
+
+      // Create game state with current castling rights
+      const gameState = createGameState(board, turn);
+      gameState.castlingRights = castlingRights;
+
+      console.log('Current castling rights:', castlingRights);
+      console.log('Is valid move?', isValidMove(gameState, move));
+
+      if (isValidMove(gameState, move)) {
+        console.log('Making move...');
         makeMove(move);
+        // If this was a castling move, update castling rights immediately
+        if (isCastling) {
+          console.log('Executing castling move');
+          const newRights = { ...castlingRights };
+          newRights[turn].kingSide = false;
+          newRights[turn].queenSide = false;
+          setCastlingRights(newRights);
+        }
       }
       setSelectedPosition(null);
       setAllowedMoves([]);
     } else {
       // No piece is currently selected.
-      // Select the piece if it exists and belongs to the current turn.
       const clickedPiece = board[position.row][position.col];
+      console.log('Selecting piece:', {
+        piece: clickedPiece?.type,
+        color: clickedPiece?.color,
+        position,
+        turn
+      });
       if (clickedPiece && clickedPiece.color === turn) {
         setSelectedPosition(position);
         const allowed = computeAllowedMoves(position);
+        console.log('Allowed moves:', allowed);
         setAllowedMoves(allowed);
       }
     }
