@@ -7,6 +7,7 @@ import { initialBoardSetup } from "../logic/GameManager";
 import { isValidMove } from "../logic/ChessRulesEngine";
 import SaveGameDialog from './SaveGameDialog';
 import LoadGameDialog from './LoadGameDialog';
+import PromotionDialog from './PromotionDialog';
 
 interface SavedGame {
   name: string;
@@ -80,6 +81,7 @@ const Board: React.FC = () => {
   // Add these state variables at the top with other state declarations
   const [promotionSquare, setPromotionSquare] = useState<Position | null>(null);
   const [showPromotionDialog, setShowPromotionDialog] = useState(false);
+  const [pendingMove, setPendingMove] = useState<{ from: Position; to: Position } | null>(null);
 
   // Load saved games list on component mount
   useEffect(() => {
@@ -121,60 +123,92 @@ const Board: React.FC = () => {
     return `${files[from.col]}${ranks[from.row]} → ${files[to.col]}${ranks[to.row]}`;
   };
 
-  const handleSquareClick = (position: Position) => {
-    const clickedPiece = board[position.row][position.col];
+  const makeMove = (move: Move) => {
+    // Before performing the move, create a snapshot of the current state
+    const currentSnapshot = createBoardSnapshot();
+    
+    // Execute the move
+    const newBoard = board.map((row) => row.slice());
+    newBoard[move.to.row][move.to.col] = board[move.from.row][move.from.col];
+    newBoard[move.from.row][move.from.col] = null;
 
-    if (!selectedPosition) {
+    // Create move with snapshot
+    const moveWithSnapshot: MoveWithSnapshot = {
+      move,
+      description: getMoveDescription(move.from, move.to),
+      snapshot: currentSnapshot
+    };
+    
+    // Update game state
+    setBoard(newBoard);
+    setTurn(turn === "white" ? "black" : "white");
+    setMoveHistory([...moveHistory, moveWithSnapshot]);
+    setLastMove(move);
+  };
+
+  const handleSquareClick = (position: Position) => {
+    if (selectedPosition) {
+      const move: Move = {
+        from: selectedPosition,
+        to: position
+      };
+
+      // Check if this is a pawn promotion move
+      const piece = board[selectedPosition.row][selectedPosition.col];
+      const isPromotion = piece?.type === 'pawn' && 
+        ((piece.color === 'white' && position.row === 0) || 
+         (piece.color === 'black' && position.row === 7));
+      
+      if (isPromotion) {
+        setPromotionSquare(position);
+        setPendingMove({ from: selectedPosition, to: position });
+        setSelectedPosition(null);
+        setAllowedMoves([]);
+        return;
+      }
+
+      if (isValidMove(createGameState(board, turn), move)) {
+        makeMove(move);
+      }
+      setSelectedPosition(null);
+      setAllowedMoves([]);
+    } else {
       // No piece is currently selected.
       // Select the piece if it exists and belongs to the current turn.
+      const clickedPiece = board[position.row][position.col];
       if (clickedPiece && clickedPiece.color === turn) {
         setSelectedPosition(position);
         const allowed = computeAllowedMoves(position);
         setAllowedMoves(allowed);
       }
-      return;
-    } else {
-      // A piece is already selected.
-      // Check if the clicked square is among the allowed moves.
-      const isAllowed = allowedMoves.some(
-        (pos) => pos.row === position.row && pos.col === position.col
-      );
-      if (isAllowed) {
-        // Before performing the move, push the current state to the undo stack.
-        const currentSnapshot = createBoardSnapshot();
-        
-        // Execute the move.
-        const move: Move = { from: selectedPosition, to: position };
-        const newBoard = board.map((row) => row.slice());
-        newBoard[position.row][position.col] = board[selectedPosition.row][selectedPosition.col];
-        newBoard[selectedPosition.row][selectedPosition.col] = null;
-        setBoard(newBoard);
-
-        // Create move with snapshot
-        const moveWithSnapshot: MoveWithSnapshot = {
-          move,
-          description: getMoveDescription(selectedPosition, position),
-          snapshot: currentSnapshot
-        };
-        
-        // Update move history and switch turn.
-        setMoveHistory([...moveHistory, moveWithSnapshot]);
-        setTurn(turn === "white" ? "black" : "white");
-        setSelectedPosition(null);
-        setAllowedMoves([]);
-      } else {
-        // If clicking on another piece of the same color, update the selection.
-        if (clickedPiece && clickedPiece.color === turn) {
-          setSelectedPosition(position);
-          const allowed = computeAllowedMoves(position);
-          setAllowedMoves(allowed);
-        } else {
-          // Otherwise, clear selection.
-          setSelectedPosition(null);
-          setAllowedMoves([]);
-        }
-      }
     }
+  };
+
+  const handlePromotion = (pieceType: "queen" | "rook" | "bishop" | "knight") => {
+    if (!pendingMove || !promotionSquare) return;
+
+    const move: Move = {
+      ...pendingMove,
+      promotion: pieceType
+    };
+
+    const newBoard = board.map((row) => row.slice());
+    newBoard[promotionSquare.row][promotionSquare.col] = {
+      type: pieceType as PromotionType,
+      color: turn
+    };
+    newBoard[pendingMove.from.row][pendingMove.from.col] = null;
+
+    setBoard(newBoard);
+    setTurn(turn === "white" ? "black" : "white");
+    setMoveHistory([...moveHistory, {
+      move,
+      description: getMoveDescription(pendingMove.from, pendingMove.to),
+      snapshot: createBoardSnapshot()
+    }]);
+    setSelectedPosition(null);
+    setPromotionSquare(null);
+    setPendingMove(null);
   };
 
   // Undo: Restore the previous game state.
@@ -299,38 +333,6 @@ const Board: React.FC = () => {
     setSavedGames(newSaves);
   };
 
-  const handlePromotion = (newType: string) => {
-    if (!selectedPosition || !promotionSquare) return;
-
-    const promotionMove: Move = {
-      from: selectedPosition,
-      to: promotionSquare,
-      promotion: newType as PromotionType
-    };
-
-    const newBoard = board.map((row) => row.slice());
-    newBoard[promotionSquare.row][promotionSquare.col] = {
-      type: newType as PromotionType,
-      color: turn
-    };
-    newBoard[selectedPosition.row][selectedPosition.col] = null;
-
-    // Create move with snapshot
-    const currentSnapshot = createBoardSnapshot();
-    const moveWithSnapshot: MoveWithSnapshot = {
-      move: promotionMove,
-      description: getMoveDescription(selectedPosition, promotionSquare),
-      snapshot: currentSnapshot
-    };
-
-    setBoard(newBoard);
-    setTurn(turn === "white" ? "black" : "white");
-    setMoveHistory([...moveHistory, moveWithSnapshot]);
-    setSelectedPosition(null);
-    setPromotionSquare(null);
-    setShowPromotionDialog(false);
-  };
-
   const renderSquare = (row: number, col: number) => {
     const position: Position = { row, col };
     const piece = board[row][col];
@@ -421,6 +423,12 @@ const Board: React.FC = () => {
           onLoad={handleLoadGame}
           onDelete={handleDeleteSave}
           onCancel={() => setShowLoadDialog(false)}
+        />
+      )}
+      {promotionSquare && (
+        <PromotionDialog
+          color={turn}
+          onSelect={handlePromotion}
         />
       )}
     </div>
