@@ -2,10 +2,12 @@
   display: flex;
   align-items: center;
   padding: 10px;
-  margin: 5px;
+  margin: 2px;
   border-radius: 4px;
   background-color: #f5f5f5;
   border: 2px solid transparent;
+  min-width: 0;
+  flex: 1;
 }
 
 .player-info.active {
@@ -32,6 +34,8 @@
 .player-details {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .player-name {
@@ -39,6 +43,37 @@
 }
 
 .player-type {
-  font-size: 0.9em;
+  word-break: break-word;
+  font-size: 0.85em;
   color: #666;
+  line-height: 1.2;
+}
+
+.players-container {
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  gap: 5px;
+  width: 100%;
+  padding: 0 10px;
+}
+
+@media (max-width: 480px) {
+  .player-info {
+    padding: 5px;
+  }
+
+  .player-color {
+    width: 15px;
+    height: 15px;
+    margin-right: 5px;
+  }
+
+  .player-name {
+    font-size: 0.9em;
+  }
+
+  .player-type {
+    font-size: 0.8em;
+  }
 } 
