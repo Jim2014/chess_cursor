@@ -282,36 +282,40 @@ const Board: React.FC = () => {
 
   return (
     <div>
-      <div className="board-container">
-        <div className="board-grid">
-          {boardRows}
-          <div className="column-labels">
-            <div className="column-label-empty"></div>
-            {['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((letter) => (
-              <div key={letter} className="column-label">{letter}</div>
-            ))}
+      <div className="game-container">
+        <div className="board-container">
+          <div className="board-grid">
+            {boardRows}
+            <div className="column-labels">
+              <div className="column-label-empty"></div>
+              {['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((letter) => (
+                <div key={letter} className="column-label">{letter}</div>
+              ))}
+            </div>
+          </div>
+          <div className="turn-indicator">Turn: {turn}</div>
+          <div className="controls">
+            <button className="reset-button" onClick={resetGame}>
+              Reset Game
+            </button>
+            <button className="save-button" onClick={saveGame}>
+              Save Game
+            </button>
+            <button className="load-button" onClick={loadGame}>
+              Load Game
+            </button>
+            <button className="undo-button" onClick={handleUndo}>
+              Undo
+            </button>
+            <button className="redo-button" onClick={handleRedo}>
+              Redo
+            </button>
           </div>
         </div>
+        <div className="side-panel">
+          <MoveHistory moves={moveHistory} />
+        </div>
       </div>
-      <div className="turn-indicator">Turn: {turn}</div>
-      <div className="controls">
-        <button className="reset-button" onClick={resetGame}>
-          Reset Game
-        </button>
-        <button className="save-button" onClick={saveGame}>
-          Save Game
-        </button>
-        <button className="load-button" onClick={loadGame}>
-          Load Game
-        </button>
-        <button className="undo-button" onClick={handleUndo}>
-          Undo
-        </button>
-        <button className="redo-button" onClick={handleRedo}>
-          Redo
-        </button>
-      </div>
-      <MoveHistory moves={moveHistory} />
     </div>
   );
 };
