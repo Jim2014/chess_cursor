@@ -21,19 +21,20 @@ const HardSettingsDialog: React.FC<HardComputerSettingsProps> = ({
         <h3>Hard Computer Settings</h3>
         
         <div className="settings-group">
-          <label>Search Depth (2-6):</label>
-          <input
-            type="number"
-            min="2"
-            max="6"
-            value={settings.maxDepth}
-            onChange={(e) => setSettings({
-              ...settings,
-              maxDepth: Math.min(6, Math.max(2, parseInt(e.target.value) || 2))
-            })}
-          />
+          <label>Search Depth:</label>
+          <div className="depth-buttons">
+            {[2, 3, 4].map((depth) => (
+              <button
+                key={depth}
+                className={`depth-button ${settings.maxDepth === depth ? 'active' : ''}`}
+                onClick={() => setSettings({ ...settings, maxDepth: depth })}
+              >
+                {depth}
+              </button>
+            ))}
+          </div>
           <div className="setting-description">
-            Higher values make the computer stronger but slower
+            Higher values make the computer play stronger but think longer
           </div>
         </div>
 
@@ -68,7 +69,7 @@ const HardSettingsDialog: React.FC<HardComputerSettingsProps> = ({
             Use Alpha-Beta Pruning
           </label>
           <div className="setting-description">
-            Makes the computer faster but might affect move quality
+            Makes the computer think faster without affecting strength
           </div>
         </div>
 
