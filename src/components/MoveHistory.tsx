@@ -12,11 +12,14 @@ const MoveHistory: React.FC<MoveHistoryProps> = ({ moves }) => {
     <div className="move-history">
       <h3>Move History</h3>
       <ul>
-        {moves.map((move, index) => (
-          <li key={index}>
-            {`${index + 1}. ${move.description}`}
-          </li>
-        ))}
+        {[...moves].reverse().map((move, index) => {
+          const moveNumber = moves.length - index;
+          return (
+            <li key={index}>
+              {`${moveNumber}. ${move.description}`}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
