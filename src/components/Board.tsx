@@ -25,10 +25,10 @@ interface SavedGame {
   };
 }
 
-const createGameState = (board: (Piece | null)[][], turn: "white" | "black" = "white"): GameState => ({
+const createGameState = (board: (Piece | null)[][], turn: "white" | "black" = "white", lastMove: Move | null): GameState => ({
   board,
   turn,
-  lastMove: null,
+  lastMove,
   castlingRights: {
     white: { kingSide: true, queenSide: true },
     black: { kingSide: true, queenSide: true }
@@ -43,7 +43,7 @@ const getValidMoves = (board: (Piece | null)[][], position: { row: number; col: 
   for (let row = 0; row < 8; row++) {
     for (let col = 0; col < 8; col++) {
       const move: Move = { from: position, to: { row, col } };
-      const gameState = createGameState(board);
+      const gameState = createGameState(board, "white", null);
       if (isValidMove(gameState, move)) {
         moves.push({ row, col });
       }
@@ -95,9 +95,10 @@ const Board: React.FC = () => {
   const computeAllowedMoves = (position: Position): Position[] => {
     const piece = board[position.row][position.col];
     if (!piece) return [];
+    if (piece.color !== turn) return [];
 
     const moves: Position[] = [];
-    const gameState = createGameState(board, turn);
+    const gameState = createGameState(board, turn, lastMove);
     gameState.castlingRights = castlingRights;
 
     // For king, only show normal one-square moves and valid castling moves
@@ -152,11 +153,49 @@ const Board: React.FC = () => {
           moves.push({ row, col: position.col - 2 });
         }
       }
+    } else if (piece.type === 'pawn') {
+      const direction = piece.color === 'white' ? -1 : 1;
+      const startRow = piece.color === 'white' ? 6 : 1;
+      
+      // Forward moves
+      const oneStep = { row: position.row + direction, col: position.col };
+      if (oneStep.row >= 0 && oneStep.row < 8) {
+        const move = { from: position, to: oneStep };
+        if (isValidMove(gameState, move)) {
+          moves.push(oneStep);
+        }
+        
+        // Two steps from starting position
+        if (position.row === startRow) {
+          const twoStep = { row: position.row + 2 * direction, col: position.col };
+          const move = { from: position, to: twoStep };
+          if (isValidMove(gameState, move)) {
+            moves.push(twoStep);
+          }
+        }
+      }
+      
+      // Diagonal captures (including en passant)
+      const captureMoves = [
+        { row: position.row + direction, col: position.col - 1 },
+        { row: position.row + direction, col: position.col + 1 }
+      ];
+      
+      for (const captureMove of captureMoves) {
+        if (captureMove.row >= 0 && captureMove.row < 8 && 
+            captureMove.col >= 0 && captureMove.col < 8) {
+          const move = { from: position, to: captureMove };
+          if (isValidMove(gameState, move)) {
+            moves.push(captureMove);
+          }
+        }
+      }
     } else {
       // For all other pieces, keep the existing logic
       for (let row = 0; row < 8; row++) {
         for (let col = 0; col < 8; col++) {
           const move: Move = { from: position, to: { row, col } };
+          gameState.turn = turn;
           if (isValidMove(gameState, move)) {
             moves.push({ row, col });
           }
@@ -207,6 +246,22 @@ const Board: React.FC = () => {
         });
         newBoard[rookRow][rookToCol] = newBoard[rookRow][rookFromCol];
         newBoard[rookRow][rookFromCol] = null;
+      }
+    }
+    
+    // Handle en passant capture
+    if (piece?.type === 'pawn' && lastMove) {
+      const isEnPassantCapture = 
+        Math.abs(move.to.col - move.from.col) === 1 && // Diagonal move
+        !board[move.to.row][move.to.col] && // No piece at target square
+        board[lastMove.to.row][lastMove.to.col]?.type === 'pawn' && // Last moved piece was a pawn
+        Math.abs(lastMove.from.row - lastMove.to.row) === 2 && // Last move was a two-square pawn move
+        lastMove.to.row === move.from.row && // Capturing pawn is on the same rank as the target pawn
+        lastMove.to.col === move.to.col; // The capture is happening on the column where the pawn landed
+      
+      if (isEnPassantCapture) {
+        // Remove the captured pawn
+        newBoard[lastMove.to.row][lastMove.to.col] = null;
       }
     }
     
@@ -271,7 +326,7 @@ const Board: React.FC = () => {
       });
 
       // Create game state with current castling rights
-      const gameState = createGameState(board, turn);
+      const gameState = createGameState(board, turn, lastMove);
       gameState.castlingRights = castlingRights;
 
       console.log('Current castling rights:', castlingRights);
@@ -351,6 +406,7 @@ const Board: React.FC = () => {
     setTurn(previousSnapshot.turn);
     setCastlingRights(previousSnapshot.castlingRights);
     setIsCheck(previousSnapshot.isCheck);
+    setLastMove(previousSnapshot.lastMove);
     setSelectedPosition(null);
     setAllowedMoves([]);
   };

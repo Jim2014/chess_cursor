@@ -11,7 +11,7 @@ const isInBounds = (position: { row: number; col: number }): boolean => {
  * Validates a move on the board using piece-specific logic.
  */
 export const isValidMove = (gameState: GameState, move: Move): boolean => {
-  const { board } = gameState;
+  const { board, turn } = gameState;
   const { from, to } = move;
   
   // Ensure both positions are within bounds.
@@ -19,7 +19,7 @@ export const isValidMove = (gameState: GameState, move: Move): boolean => {
   
   // Ensure there is a piece at the source.
   const piece = board[from.row][from.col];
-  if (!piece) return false;
+  if (!piece || piece.color !== turn) return false;
   
   // Prevent null moves.
   if (from.row === to.row && from.col === to.col) return false;
@@ -105,6 +105,14 @@ const isValidPawnMove = (gameState: GameState, move: Move, piece: Piece): boolea
   const rowDiff = move.to.row - move.from.row;
   const colDiff = move.to.col - move.from.col;
 
+  // Check if the move is within bounds and in the correct direction
+  if (move.to.row < 0 || move.to.row > 7 || move.to.col < 0 || move.to.col > 7) {
+    return false;
+  }
+  if (Math.sign(rowDiff) !== direction) {
+    return false;
+  }
+
   // Moving straight forward.
   if (colDiff === 0) {
     // One step forward.
@@ -121,31 +129,32 @@ const isValidPawnMove = (gameState: GameState, move: Move, piece: Piece): boolea
       return true;
     }
   }
-  // Diagonal capture.
-  else if (Math.abs(colDiff) === 1 && rowDiff === direction) {
+  // Diagonal capture or en passant
+  else if (Math.abs(colDiff) === 1 && Math.abs(rowDiff) === 1) {
+    // Regular capture
     if (board[move.to.row][move.to.col] && board[move.to.row][move.to.col]?.color !== piece.color) {
       return true;
     }
-  }
-
-  // En passant
-  if (lastMove && 
-      Math.abs(colDiff) === 1 && 
-      rowDiff === direction &&
-      lastMove.from.row === (piece.color === "white" ? 1 : 6) &&
-      lastMove.to.row === (piece.color === "white" ? 3 : 4) &&
-      lastMove.to.col === move.to.col &&
-      board[lastMove.to.row][lastMove.to.col]?.type === "pawn") {
-    return true;
+    
+    // En passant
+    if (lastMove && 
+        board[lastMove.to.row][lastMove.to.col]?.type === 'pawn' &&
+        Math.abs(lastMove.from.row - lastMove.to.row) === 2 && // Last move was a two-square pawn move
+        lastMove.to.row === move.from.row && // Capturing pawn is on the same rank as the target pawn
+        lastMove.to.col === move.to.col && // The capture is happening on the column where the pawn landed
+        board[lastMove.to.row][lastMove.to.col]?.color !== piece.color) { // Target pawn is of opposite color
+      return true;
+    }
   }
 
   // Promotion validation
   const finalRow = piece.color === "white" ? 0 : 7;
   if (move.to.row === finalRow && !move.promotion) {
-    return false; // Must specify promotion piece when reaching the last rank
+    // We'll handle promotion in the UI, so we'll allow the move
+    return true;
   }
 
-  return false;
+  return false; // If none of the above conditions were met, the move is invalid
 };
 
 /**
