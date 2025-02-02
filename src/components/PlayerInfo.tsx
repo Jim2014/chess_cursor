@@ -5,7 +5,7 @@ interface PlayerInfoProps {
   color: 'white' | 'black';
   gameMode: 'human' | 'computer' | 'computer-vs-computer';
   isCurrentTurn: boolean;
-  computerLevel?: 'easy' | 'medium';
+  computerLevel?: 'easy' | 'medium' | 'hard';
 }
 
 const PlayerInfo: React.FC<PlayerInfoProps> = ({ color, gameMode, isCurrentTurn, computerLevel }) => {

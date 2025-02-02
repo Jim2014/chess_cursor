@@ -14,6 +14,7 @@ import { MediumComputerPlayer } from '../ai/MediumComputerPlayer';
 import GameResultDialog, { GameResult } from './GameResultDialog';
 import { isStalemate, hasInsufficientMaterial, isThreefoldRepetition, isFiftyMoveRule } from '../logic/ChessRulesEngine';
 import PlayerInfo from './PlayerInfo';
+import { HardComputerPlayer } from '../ai/HardComputerPlayer';
 
 interface SavedGame {
   name: string;
@@ -106,15 +107,25 @@ const Board: React.FC = () => {
   const [canMakeNextMove, setCanMakeNextMove] = useState(false);
 
   const whiteComputerPlayer = useMemo(() => {
-    return gameSettings.whitePlayerLevel === 'easy' 
-      ? new ComputerPlayer()
-      : new MediumComputerPlayer();
+    switch (gameSettings.whitePlayerLevel) {
+      case 'hard':
+        return new HardComputerPlayer();
+      case 'medium':
+        return new MediumComputerPlayer();
+      default:
+        return new ComputerPlayer();
+    }
   }, [gameSettings.whitePlayerLevel]);
   
   const blackComputerPlayer = useMemo(() => {
-    return gameSettings.blackPlayerLevel === 'easy' 
-      ? new ComputerPlayer()
-      : new MediumComputerPlayer();
+    switch (gameSettings.blackPlayerLevel) {
+      case 'hard':
+        return new HardComputerPlayer();
+      case 'medium':
+        return new MediumComputerPlayer();
+      default:
+        return new ComputerPlayer();
+    }
   }, [gameSettings.blackPlayerLevel]);
 
   const [gameResult, setGameResult] = useState<GameResult | null>(null);

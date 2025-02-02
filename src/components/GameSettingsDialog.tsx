@@ -9,8 +9,8 @@ interface GameSettingsDialogProps {
 export interface GameSettings {
   gameMode: 'human' | 'computer' | 'computer-vs-computer';
   computerColor: 'white' | 'black';  // Only used in human vs computer mode
-  whitePlayerLevel: 'easy' | 'medium';  // Used for white player in computer vs computer
-  blackPlayerLevel: 'easy' | 'medium';  // Used for black player in computer vs computer
+  whitePlayerLevel: 'easy' | 'medium' | 'hard';  // Used for white player in computer vs computer
+  blackPlayerLevel: 'easy' | 'medium' | 'hard';  // Used for black player in computer vs computer
 }
 
 const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ onStart, onCancel }) => {
@@ -62,7 +62,7 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ onStart, onCanc
               <select
                 value={settings.computerColor === 'white' ? settings.whitePlayerLevel : settings.blackPlayerLevel}
                 onChange={(e) => {
-                  const level = e.target.value as 'easy' | 'medium';
+                  const level = e.target.value as 'easy' | 'medium' | 'hard';
                   setSettings({
                     ...settings,
                     whitePlayerLevel: settings.computerColor === 'white' ? level : settings.whitePlayerLevel,
@@ -72,6 +72,7 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ onStart, onCanc
               >
                 <option value="easy">Easy</option>
                 <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
               </select>
             </div>
           </>
@@ -85,11 +86,12 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ onStart, onCanc
                 value={settings.whitePlayerLevel}
                 onChange={(e) => setSettings({
                   ...settings,
-                  whitePlayerLevel: e.target.value as 'easy' | 'medium'
+                  whitePlayerLevel: e.target.value as 'easy' | 'medium' | 'hard'
                 })}
               >
                 <option value="easy">Easy</option>
                 <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
               </select>
             </div>
 
@@ -99,11 +101,12 @@ const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ onStart, onCanc
                 value={settings.blackPlayerLevel}
                 onChange={(e) => setSettings({
                   ...settings,
-                  blackPlayerLevel: e.target.value as 'easy' | 'medium'
+                  blackPlayerLevel: e.target.value as 'easy' | 'medium' | 'hard'
                 })}
               >
                 <option value="easy">Easy</option>
                 <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
               </select>
             </div>
           </>
