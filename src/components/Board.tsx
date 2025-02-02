@@ -199,7 +199,6 @@ const Board: React.FC = () => {
     setIsCheck(false);
     setUndoStack([]);
     setRedoStack([]);
-    localStorage.removeItem("chessGameState");
   };
 
   const saveGame = () => {
@@ -219,6 +218,9 @@ const Board: React.FC = () => {
     if (savedState) {
       try {
         const gameState: GameState = JSON.parse(savedState);
+        setUndoStack([]);
+        setRedoStack([]);
+
         setBoard(gameState.board);
         setTurn(gameState.turn);
         setMoveHistory(gameState.moveHistory);
@@ -234,7 +236,10 @@ const Board: React.FC = () => {
         }, 0);
       } catch (error) {
         console.error('Error loading game state:', error);
+        alert('Failed to load saved game');
       }
+    } else {
+      alert('No saved game found');
     }
   };
 
