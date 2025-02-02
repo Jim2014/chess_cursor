@@ -14,12 +14,19 @@ export interface GameSettings {
 }
 
 const GameSettingsDialog: React.FC<GameSettingsDialogProps> = ({ onStart, onCancel }) => {
-  const [settings, setSettings] = useState<GameSettings>({
+  const defaultSettings: GameSettings = {
     gameMode: 'human',
     computerColor: 'black',
     whitePlayerLevel: 'easy',
     blackPlayerLevel: 'easy'
-  });
+  };
+
+  const [settings, setSettings] = useState<GameSettings>(defaultSettings);
+
+  // Reset settings to default when dialog opens
+  React.useEffect(() => {
+    setSettings(defaultSettings);
+  }, []); // Empty dependency array means this runs once when component mounts
 
   return (
     <div className="dialog-overlay">

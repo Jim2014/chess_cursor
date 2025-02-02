@@ -733,6 +733,10 @@ const Board: React.FC = () => {
     <div className="controls">
       <button onClick={() => {
         resetGame();
+        // Set to manual mode if it's computer vs computer
+        if (gameSettings.gameMode === 'computer-vs-computer') {
+          setPlayMode('manual');
+        }
         setShowSettings(true);
       }}>
         New Game
