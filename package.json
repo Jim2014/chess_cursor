@@ -1,5 +1,6 @@
 {
   "name": "chess-game",
+  "homepage": ".",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -9,7 +10,9 @@
     "test:unit": "jest src/__tests__/logic",
     "test:integration": "jest src/__tests__/components",
     "test:all": "jest",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build"
   },
   "dependencies": {
     "react": "^18.2.0",
