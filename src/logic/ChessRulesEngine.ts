@@ -1,4 +1,4 @@
-import { Piece, Move, GameState } from "./types";
+import { Piece, Move, GameState, MoveWithSnapshot } from "./types";
 
 /**
  * Checks whether the given position is inside the board boundaries.
@@ -316,6 +316,131 @@ const simulateMove = (board: (Piece | null)[][], move: Move): (Piece | null)[][]
   newBoard[move.to.row][move.to.col] = newBoard[move.from.row][move.from.col];
   newBoard[move.from.row][move.from.col] = null;
   return newBoard;
+};
+
+export const isStalemate = (gameState: GameState): boolean => {
+  const { board, turn } = gameState;
+  
+  // If the king is in check, it's not stalemate
+  if (isKingInCheck(board, turn)) return false;
+  
+  // Check if there are any legal moves
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const piece = board[row][col];
+      if (piece && piece.color === turn) {
+        for (let toRow = 0; toRow < 8; toRow++) {
+          for (let toCol = 0; toCol < 8; toCol++) {
+            const move: Move = {
+              from: { row, col },
+              to: { row: toRow, col: toCol }
+            };
+            if (isValidMove(gameState, move)) {
+              return false;
+            }
+          }
+        }
+      }
+    }
+  }
+  return true;
+};
+
+export const hasInsufficientMaterial = (board: (Piece | null)[][]): boolean => {
+  const pieces = {
+    white: { bishops: 0, knights: 0, others: 0 },
+    black: { bishops: 0, knights: 0, others: 0 }
+  };
+  
+  // Count pieces
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const piece = board[row][col];
+      if (piece && piece.type !== 'king') {
+        if (piece.type === 'bishop') {
+          pieces[piece.color].bishops++;
+        } else if (piece.type === 'knight') {
+          pieces[piece.color].knights++;
+        } else {
+          pieces[piece.color].others++;
+        }
+      }
+    }
+  }
+  
+  // Check insufficient material conditions
+  const whitePieces = pieces.white;
+  const blackPieces = pieces.black;
+  
+  // King vs King
+  if (whitePieces.bishops === 0 && whitePieces.knights === 0 && whitePieces.others === 0 &&
+      blackPieces.bishops === 0 && blackPieces.knights === 0 && blackPieces.others === 0) {
+    return true;
+  }
+  
+  // King and Bishop vs King
+  if ((whitePieces.bishops === 1 && whitePieces.knights === 0 && whitePieces.others === 0 &&
+       blackPieces.bishops === 0 && blackPieces.knights === 0 && blackPieces.others === 0) ||
+      (blackPieces.bishops === 1 && blackPieces.knights === 0 && blackPieces.others === 0 &&
+       whitePieces.bishops === 0 && whitePieces.knights === 0 && whitePieces.others === 0)) {
+    return true;
+  }
+  
+  // King and Knight vs King
+  if ((whitePieces.bishops === 0 && whitePieces.knights === 1 && whitePieces.others === 0 &&
+       blackPieces.bishops === 0 && blackPieces.knights === 0 && blackPieces.others === 0) ||
+      (blackPieces.bishops === 0 && blackPieces.knights === 1 && blackPieces.others === 0 &&
+       whitePieces.bishops === 0 && whitePieces.knights === 0 && whitePieces.others === 0)) {
+    return true;
+  }
+  
+  return false;
+};
+
+export const isThreefoldRepetition = (moveHistory: MoveWithSnapshot[]): boolean => {
+  // Create a map to store board positions and their count
+  const positions = new Map<string, number>();
+  
+  // Go through each position in the move history
+  for (const move of moveHistory) {
+    const positionKey = getBoardPositionKey(move.snapshot.board);
+    positions.set(positionKey, (positions.get(positionKey) || 0) + 1);
+    if ((positions.get(positionKey) || 0) >= 3) {
+      return true;
+    }
+  }
+  
+  return false;
+};
+
+// Helper function to create a unique key for a board position
+const getBoardPositionKey = (board: (Piece | null)[][]): string => {
+  return board.map(row => 
+    row.map(piece => 
+      piece ? `${piece.type}${piece.color}` : '-'
+    ).join('')
+  ).join('|');
+};
+
+export const isFiftyMoveRule = (moveHistory: MoveWithSnapshot[]): boolean => {
+  let movesSincePawnMoveOrCapture = 0;
+  
+  for (let i = moveHistory.length - 1; i >= 0; i--) {
+    const move = moveHistory[i];
+    const piece = move.snapshot.board[move.move.from.row][move.move.from.col];
+    const isCapture = move.snapshot.board[move.move.to.row][move.move.to.col] !== null;
+    
+    if (piece?.type === 'pawn' || isCapture) {
+      break;
+    }
+    
+    movesSincePawnMoveOrCapture++;
+    if (movesSincePawnMoveOrCapture >= 100) { // 50 moves by each player = 100 half-moves
+      return true;
+    }
+  }
+  
+  return false;
 };
 
 export { isInBounds, isKingInCheck, isCheckmate };

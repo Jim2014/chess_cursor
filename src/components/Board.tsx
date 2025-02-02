@@ -11,6 +11,8 @@ import PromotionDialog from './PromotionDialog';
 import { ComputerPlayer } from "../ai/ComputerPlayer";
 import GameSettingsDialog, { GameSettings } from './GameSettingsDialog';
 import { MediumComputerPlayer } from '../ai/MediumComputerPlayer';
+import GameResultDialog, { GameResult } from './GameResultDialog';
+import { isStalemate, hasInsufficientMaterial, isThreefoldRepetition, isFiftyMoveRule } from '../logic/ChessRulesEngine';
 
 interface SavedGame {
   name: string;
@@ -97,6 +99,9 @@ const Board: React.FC = () => {
     blackPlayerLevel: 'easy'
   });
   
+  // Add a counter for computer vs computer moves
+  const [computerMoveCount, setComputerMoveCount] = useState(0);
+
   const whiteComputerPlayer = useMemo(() => {
     return gameSettings.whitePlayerLevel === 'easy' 
       ? new ComputerPlayer()
@@ -108,6 +113,8 @@ const Board: React.FC = () => {
       ? new ComputerPlayer()
       : new MediumComputerPlayer();
   }, [gameSettings.blackPlayerLevel]);
+
+  const [gameResult, setGameResult] = useState<GameResult | null>(null);
 
   // Load saved games list on component mount
   useEffect(() => {
@@ -122,7 +129,16 @@ const Board: React.FC = () => {
     if ((gameSettings.gameMode === 'computer-vs-computer' ||
         (gameSettings.gameMode === 'computer' && turn === gameSettings.computerColor)) &&
         !promotionSquare && 
-        !isInCheckmate) {
+        !gameResult) {
+      // Check for move limit in computer vs computer mode
+      if (gameSettings.gameMode === 'computer-vs-computer' && computerMoveCount >= 200) {
+        setGameResult({
+          type: 'insufficient-material',
+          moveLimit: true
+        });
+        return;
+      }
+
       const timer = setTimeout(() => {
         const gameState = createGameState(board, turn, lastMove);
         gameState.castlingRights = castlingRights;
@@ -132,12 +148,16 @@ const Board: React.FC = () => {
         if (move) {
           setComputerLastMove(move);
           makeMove(move);
+          // Increment move counter only in computer vs computer mode
+          if (gameSettings.gameMode === 'computer-vs-computer') {
+            setComputerMoveCount(prev => prev + 1);
+          }
         }
-      }, gameSettings.gameMode === 'computer-vs-computer' ? 1000 : 500);
+      }, gameSettings.gameMode === 'computer-vs-computer' ? 800 : 500);
       
       return () => clearTimeout(timer);
     }
-  }, [gameSettings.gameMode, turn, gameSettings.computerColor, board, lastMove, isInCheckmate]);
+  }, [gameSettings.gameMode, turn, gameSettings.computerColor, board, lastMove, gameResult, computerMoveCount]);
 
   // Compute allowed moves for the selected piece.
   const computeAllowedMoves = (position: Position): Position[] => {
@@ -347,6 +367,30 @@ const Board: React.FC = () => {
     setIsCheck(isInCheck);
     setIsInCheckmate(isInCheckmate);
 
+    // Check for game end conditions
+    if (isInCheckmate) {
+      setGameResult({
+        type: 'checkmate',
+        winner: turn
+      });
+    } else if (isStalemate(newGameState)) {
+      setGameResult({
+        type: 'stalemate'
+      });
+    } else if (hasInsufficientMaterial(newBoard)) {
+      setGameResult({
+        type: 'insufficient-material'
+      });
+    } else if (isThreefoldRepetition(moveHistory)) {
+      setGameResult({
+        type: 'threefold-repetition'
+      });
+    } else if (isFiftyMoveRule(moveHistory)) {
+      setGameResult({
+        type: 'fifty-move'
+      });
+    }
+
     // Create move description with check/checkmate status
     let moveDesc = getMoveDescription(move.from, move.to);
     if (isInCheckmate) {
@@ -376,7 +420,9 @@ const Board: React.FC = () => {
 
   const handleSquareClick = (position: Position) => {
     if (gameSettings.gameMode === 'computer-vs-computer' || 
-        (gameSettings.gameMode === 'computer' && turn === gameSettings.computerColor)) return;
+        (gameSettings.gameMode === 'computer' && turn === gameSettings.computerColor)) {
+      return;
+    }
     if (selectedPosition) {
       const move: Move = {
         from: selectedPosition,
@@ -548,6 +594,8 @@ const Board: React.FC = () => {
     setUndoStack([]);
     setRedoStack([]);
     setComputerLastMove(null);
+    setGameResult(null);
+    setComputerMoveCount(0);
   };
 
   const handleSaveGame = (name: string) => {
@@ -727,6 +775,16 @@ const Board: React.FC = () => {
             setShowSettings(false);
           }}
           onCancel={() => setShowSettings(false)}
+        />
+      )}
+      {gameResult && (
+        <GameResultDialog
+          result={gameResult}
+          onNewGame={() => {
+            resetGame();
+            setShowSettings(true);
+          }}
+          onClose={() => setGameResult(null)}
         />
       )}
     </div>
