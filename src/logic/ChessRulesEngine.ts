@@ -147,14 +147,7 @@ const isValidPawnMove = (gameState: GameState, move: Move, piece: Piece): boolea
     }
   }
 
-  // Promotion validation
-  const finalRow = piece.color === "white" ? 0 : 7;
-  if (move.to.row === finalRow && !move.promotion) {
-    // We'll handle promotion in the UI, so we'll allow the move
-    return true;
-  }
-
-  return false; // If none of the above conditions were met, the move is invalid
+  return false;
 };
 
 /**

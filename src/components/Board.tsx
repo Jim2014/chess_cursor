@@ -314,6 +314,30 @@ const Board: React.FC = () => {
       };
 
       const piece = board[selectedPosition.row][selectedPosition.col];
+      // Create game state with current castling rights
+      const gameState = createGameState(board, turn, lastMove);
+      gameState.castlingRights = castlingRights;
+
+      // Check if the move is valid first
+      if (!isValidMove(gameState, move)) {
+        setSelectedPosition(null);
+        setAllowedMoves([]);
+        return;
+      }
+
+      // Check for pawn promotion
+      if (piece?.type === 'pawn') {
+        const isPromotion = (piece.color === 'white' && position.row === 0) || 
+                           (piece.color === 'black' && position.row === 7);
+        if (isPromotion) {
+          setPromotionSquare(position);
+          setPendingMove({ from: selectedPosition, to: position });
+          setSelectedPosition(null);
+          setAllowedMoves([]);
+          return;
+        }
+      }
+
       const isCastling = piece?.type === 'king' && 
         Math.abs(position.col - selectedPosition.col) === 2;
 
@@ -324,10 +348,6 @@ const Board: React.FC = () => {
         isCastling,
         turn
       });
-
-      // Create game state with current castling rights
-      const gameState = createGameState(board, turn, lastMove);
-      gameState.castlingRights = castlingRights;
 
       console.log('Current castling rights:', castlingRights);
       console.log('Is valid move?', isValidMove(gameState, move));
