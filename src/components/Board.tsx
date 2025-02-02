@@ -13,6 +13,7 @@ import GameSettingsDialog, { GameSettings } from './GameSettingsDialog';
 import { MediumComputerPlayer } from '../ai/MediumComputerPlayer';
 import GameResultDialog, { GameResult } from './GameResultDialog';
 import { isStalemate, hasInsufficientMaterial, isThreefoldRepetition, isFiftyMoveRule } from '../logic/ChessRulesEngine';
+import PlayerInfo from './PlayerInfo';
 
 interface SavedGame {
   name: string;
@@ -101,6 +102,8 @@ const Board: React.FC = () => {
   
   // Add a counter for computer vs computer moves
   const [computerMoveCount, setComputerMoveCount] = useState(0);
+  const [playMode, setPlayMode] = useState<'auto' | 'manual'>('auto');
+  const [canMakeNextMove, setCanMakeNextMove] = useState(false);
 
   const whiteComputerPlayer = useMemo(() => {
     return gameSettings.whitePlayerLevel === 'easy' 
@@ -130,6 +133,12 @@ const Board: React.FC = () => {
         (gameSettings.gameMode === 'computer' && turn === gameSettings.computerColor)) &&
         !promotionSquare && 
         !gameResult) {
+      // In manual mode, only make move when canMakeNextMove is true
+      if (gameSettings.gameMode === 'computer-vs-computer' && 
+          playMode === 'manual' && !canMakeNextMove) {
+        return;
+      }
+
       // Check for move limit in computer vs computer mode
       if (gameSettings.gameMode === 'computer-vs-computer' && computerMoveCount >= 200) {
         setGameResult({
@@ -151,13 +160,15 @@ const Board: React.FC = () => {
           // Increment move counter only in computer vs computer mode
           if (gameSettings.gameMode === 'computer-vs-computer') {
             setComputerMoveCount(prev => prev + 1);
+            setCanMakeNextMove(false); // Reset the flag after making a move in manual mode
           }
         }
       }, gameSettings.gameMode === 'computer-vs-computer' ? 800 : 500);
       
       return () => clearTimeout(timer);
     }
-  }, [gameSettings.gameMode, turn, gameSettings.computerColor, board, lastMove, gameResult, computerMoveCount]);
+  }, [gameSettings.gameMode, turn, gameSettings.computerColor, board, lastMove, gameResult, 
+      computerMoveCount, playMode, canMakeNextMove]);
 
   // Compute allowed moves for the selected piece.
   const computeAllowedMoves = (position: Position): Position[] => {
@@ -596,6 +607,8 @@ const Board: React.FC = () => {
     setComputerLastMove(null);
     setGameResult(null);
     setComputerMoveCount(0);
+    setPlayMode('auto');
+    setCanMakeNextMove(false);
   };
 
   const handleSaveGame = (name: string) => {
@@ -728,21 +741,70 @@ const Board: React.FC = () => {
     </div>
   );
 
+  // Add play control buttons render function
+  const renderPlayControls = () => {
+    if (gameSettings.gameMode !== 'computer-vs-computer') return null;
+    
+    return (
+      <div className="play-controls">
+        <button 
+          onClick={() => setPlayMode(playMode === 'auto' ? 'manual' : 'auto')}
+          className={playMode === 'auto' ? 'active' : ''}
+        >
+          {playMode === 'auto' ? 'Pause' : 'Auto'}
+        </button>
+        {playMode === 'manual' && (
+          <button 
+            onClick={() => setCanMakeNextMove(true)}
+            disabled={canMakeNextMove}
+          >
+            Next Move
+          </button>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div>
       <div className="game-container">
-        <div className="board-container">
-          <div className="board-grid">
-            {boardRows}
-            <div className="column-labels">
-              <div className="column-label-empty"></div>
-              {['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((letter) => (
-                <div key={letter} className="column-label">{letter}</div>
-              ))}
-            </div>
+        <div className="main-content">
+          <div className="players-container">
+            <PlayerInfo
+              color="white"
+              gameMode={gameSettings.gameMode}
+              isCurrentTurn={turn === 'white'}
+              computerLevel={
+                gameSettings.gameMode === 'computer-vs-computer' ? gameSettings.whitePlayerLevel :
+                gameSettings.gameMode === 'computer' && gameSettings.computerColor === 'white' ? 
+                gameSettings.whitePlayerLevel : undefined
+              }
+            />
+            <PlayerInfo
+              color="black"
+              gameMode={gameSettings.gameMode}
+              isCurrentTurn={turn === 'black'}
+              computerLevel={
+                gameSettings.gameMode === 'computer-vs-computer' ? gameSettings.blackPlayerLevel :
+                gameSettings.gameMode === 'computer' && gameSettings.computerColor === 'black' ? 
+                gameSettings.blackPlayerLevel : undefined
+              }
+            />
           </div>
-          <div className="turn-indicator">Turn: {turn}</div>
-          {renderGameControls()}
+          <div className="board-container">
+            <div className="board-grid">
+              {boardRows}
+              <div className="column-labels">
+                <div className="column-label-empty"></div>
+                {['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((letter) => (
+                  <div key={letter} className="column-label">{letter}</div>
+                ))}
+              </div>
+            </div>
+            <div className="turn-indicator">Turn: {turn}</div>
+            {renderPlayControls()}
+            {renderGameControls()}
+          </div>
         </div>
         <div className="side-panel">
           <MoveHistory moves={moveHistory} />
