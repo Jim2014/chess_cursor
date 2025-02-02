@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Square from "./Square";
 import MoveHistory from "./MoveHistory";
 import "../styles/Board.css";
@@ -8,6 +8,7 @@ import { isValidMove, isKingInCheck, isCheckmate } from "../logic/ChessRulesEngi
 import SaveGameDialog from './SaveGameDialog';
 import LoadGameDialog from './LoadGameDialog';
 import PromotionDialog from './PromotionDialog';
+import { ComputerPlayer } from "../ai/ComputerPlayer";
 
 interface SavedGame {
   name: string;
@@ -72,6 +73,7 @@ const Board: React.FC = () => {
     black: { kingSide: true, queenSide: true }
   });
   const [isCheck, setIsCheck] = useState(false);
+  const [isInCheckmate, setIsInCheckmate] = useState(false);
 
   // New state variables
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -83,6 +85,11 @@ const Board: React.FC = () => {
   const [showPromotionDialog, setShowPromotionDialog] = useState(false);
   const [pendingMove, setPendingMove] = useState<{ from: Position; to: Position } | null>(null);
 
+  // Add these new state variables
+  const [isVsComputer, setIsVsComputer] = useState(false);
+  const [computerColor, setComputerColor] = useState<"black" | "white">("black");
+  const computerPlayer = useMemo(() => new ComputerPlayer(), []);
+
   // Load saved games list on component mount
   useEffect(() => {
     const saves = localStorage.getItem('chessGameSaves');
@@ -90,6 +97,23 @@ const Board: React.FC = () => {
       setSavedGames(JSON.parse(saves));
     }
   }, []);
+
+  // Handle computer's move
+  useEffect(() => {
+    if (isVsComputer && turn === computerColor && !promotionSquare && !isInCheckmate) {
+      // Add a small delay to make it feel more natural
+      const timer = setTimeout(() => {
+        const gameState = createGameState(board, turn, lastMove);
+        gameState.castlingRights = castlingRights;
+        const move = computerPlayer.getBestMove(gameState);
+        if (move) {  // Only make move if one is available
+          makeMove(move);
+        }
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [turn, isVsComputer, computerColor, board, lastMove, isInCheckmate]);
 
   // Compute allowed moves for the selected piece.
   const computeAllowedMoves = (position: Position): Position[] => {
@@ -297,6 +321,7 @@ const Board: React.FC = () => {
     const isInCheck = isKingInCheck(newBoard, turn === "white" ? "black" : "white");
     const isInCheckmate = isInCheck && isCheckmate(newGameState, turn === "white" ? "black" : "white");
     setIsCheck(isInCheck);
+    setIsInCheckmate(isInCheckmate);
 
     // Create move description with check/checkmate status
     let moveDesc = getMoveDescription(move.from, move.to);
@@ -326,6 +351,7 @@ const Board: React.FC = () => {
   };
 
   const handleSquareClick = (position: Position) => {
+    if (isVsComputer && turn === computerColor) return;
     if (selectedPosition) {
       const move: Move = {
         from: selectedPosition,
@@ -493,6 +519,7 @@ const Board: React.FC = () => {
       black: { kingSide: true, queenSide: true }
     });
     setIsCheck(false);
+    setIsInCheckmate(false);
     setUndoStack([]);
     setRedoStack([]);
   };
@@ -529,6 +556,7 @@ const Board: React.FC = () => {
         setTurn(gameState.turn);
         setCastlingRights(gameState.castlingRights);
         setIsCheck(gameState.isCheck);
+        setIsInCheckmate(gameState.isCheck && isCheckmate(createGameState(gameState.board, gameState.turn, gameState.lastMove), gameState.turn));
         setLastMove(gameState.lastMove);
         
         // Initialize undo stack with the initial state from the first move's snapshot
@@ -597,6 +625,33 @@ const Board: React.FC = () => {
     );
   }
 
+  // Add controls for computer player
+  const renderGameControls = () => (
+    <div className="controls">
+      <button onClick={resetGame}>Reset Game</button>
+      <button onClick={() => setIsVsComputer(!isVsComputer)}>
+        {isVsComputer ? "vs Human" : "vs Computer"}
+      </button>
+      {isVsComputer && (
+        <button onClick={() => setComputerColor(computerColor === "white" ? "black" : "white")}>
+          Play as {computerColor === "white" ? "Black" : "White"}
+        </button>
+      )}
+      <button className="save-button" onClick={() => setShowSaveDialog(true)}>
+        Save Game
+      </button>
+      <button className="load-button" onClick={() => setShowLoadDialog(true)}>
+        Load Game
+      </button>
+      <button className="undo-button" onClick={handleUndo}>
+        Undo
+      </button>
+      <button className="redo-button" onClick={handleRedo}>
+        Redo
+      </button>
+    </div>
+  );
+
   return (
     <div>
       <div className="game-container">
@@ -611,23 +666,7 @@ const Board: React.FC = () => {
             </div>
           </div>
           <div className="turn-indicator">Turn: {turn}</div>
-          <div className="controls">
-            <button className="reset-button" onClick={resetGame}>
-              Reset Game
-            </button>
-            <button className="save-button" onClick={() => setShowSaveDialog(true)}>
-              Save Game
-            </button>
-            <button className="load-button" onClick={() => setShowLoadDialog(true)}>
-              Load Game
-            </button>
-            <button className="undo-button" onClick={handleUndo}>
-              Undo
-            </button>
-            <button className="redo-button" onClick={handleRedo}>
-              Redo
-            </button>
-          </div>
+          {renderGameControls()}
         </div>
         <div className="side-panel">
           <MoveHistory moves={moveHistory} />
