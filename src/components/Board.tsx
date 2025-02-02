@@ -14,7 +14,8 @@ import { MediumComputerPlayer } from '../ai/MediumComputerPlayer';
 import GameResultDialog, { GameResult } from './GameResultDialog';
 import { isStalemate, hasInsufficientMaterial, isThreefoldRepetition, isFiftyMoveRule } from '../logic/ChessRulesEngine';
 import PlayerInfo from './PlayerInfo';
-import { HardComputerPlayer } from '../ai/HardComputerPlayer';
+import { HardComputerPlayer, type HardComputerSettings } from '../ai/HardComputerPlayer';
+import HardSettingsDialog from './HardComputerSettings';
 
 interface SavedGame {
   name: string;
@@ -106,27 +107,34 @@ const Board: React.FC = () => {
   const [playMode, setPlayMode] = useState<'auto' | 'manual'>('auto');
   const [canMakeNextMove, setCanMakeNextMove] = useState(false);
 
+  const [showHardSettings, setShowHardSettings] = useState(false);
+  const [hardSettings, setHardSettings] = useState<HardComputerSettings>({
+    maxDepth: 2,
+    moveDelay: 800,
+    useAlphaBeta: true
+  });
+
   const whiteComputerPlayer = useMemo(() => {
     switch (gameSettings.whitePlayerLevel) {
       case 'hard':
-        return new HardComputerPlayer();
+        return new HardComputerPlayer(hardSettings);
       case 'medium':
         return new MediumComputerPlayer();
       default:
         return new ComputerPlayer();
     }
-  }, [gameSettings.whitePlayerLevel]);
+  }, [gameSettings.whitePlayerLevel, hardSettings]);
   
   const blackComputerPlayer = useMemo(() => {
     switch (gameSettings.blackPlayerLevel) {
       case 'hard':
-        return new HardComputerPlayer();
+        return new HardComputerPlayer(hardSettings);
       case 'medium':
         return new MediumComputerPlayer();
       default:
         return new ComputerPlayer();
     }
-  }, [gameSettings.blackPlayerLevel]);
+  }, [gameSettings.blackPlayerLevel, hardSettings]);
 
   const [gameResult, setGameResult] = useState<GameResult | null>(null);
 
@@ -753,6 +761,12 @@ const Board: React.FC = () => {
       <button className="redo-button" onClick={handleRedo}>
         Redo
       </button>
+      {(gameSettings.whitePlayerLevel === 'hard' || 
+        gameSettings.blackPlayerLevel === 'hard') && (
+        <button onClick={() => setShowHardSettings(true)}>
+          Hard Settings
+        </button>
+      )}
     </div>
   );
 
@@ -859,9 +873,23 @@ const Board: React.FC = () => {
           result={gameResult}
           onNewGame={() => {
             resetGame();
+            // Set to manual mode if it's computer vs computer
+            if (gameSettings.gameMode === 'computer-vs-computer') {
+              setPlayMode('manual');
+            }
             setShowSettings(true);
           }}
           onClose={() => setGameResult(null)}
+        />
+      )}
+      {showHardSettings && (
+        <HardSettingsDialog
+          initialSettings={hardSettings}
+          onSave={(settings: HardComputerSettings) => {
+            setHardSettings(settings);
+            setShowHardSettings(false);
+          }}
+          onCancel={() => setShowHardSettings(false)}
         />
       )}
     </div>

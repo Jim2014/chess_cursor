@@ -74,8 +74,26 @@ const POSITION_VALUES = {
   ]
 };
 
+export interface HardComputerSettings {
+  maxDepth: number;        // Search depth (default: 4)
+  moveDelay: number;       // Delay between moves in ms (default: 800)
+  useAlphaBeta: boolean;   // Whether to use alpha-beta pruning (default: true)
+}
+
 export class HardComputerPlayer {
-  private readonly MAX_DEPTH = 4;
+  private settings: HardComputerSettings;
+
+  constructor(settings?: Partial<HardComputerSettings>) {
+    this.settings = {
+      maxDepth: settings?.maxDepth ?? 2,
+      moveDelay: settings?.moveDelay ?? 800,
+      useAlphaBeta: settings?.useAlphaBeta ?? true
+    };
+  }
+
+  public updateSettings(settings: Partial<HardComputerSettings>) {
+    this.settings = { ...this.settings, ...settings };
+  }
 
   public getBestMove(gameState: GameState): Move | null {
     const moves = this.getAllValidMoves(gameState);
@@ -84,24 +102,33 @@ export class HardComputerPlayer {
     let bestMove: Move | null = null;
     let bestScore = gameState.turn === 'white' ? -Infinity : Infinity;
 
-    // Use alpha-beta pruning for better performance
-    const alpha = -Infinity;
-    const beta = Infinity;
+    // Always provide alpha-beta values, but only use them if useAlphaBeta is true
+    let alpha = -Infinity;
+    let beta = Infinity;
 
     for (const move of moves) {
       const newState = this.makeMove(gameState, move);
-      const score = this.minimax(newState, this.MAX_DEPTH - 1, alpha, beta, gameState.turn !== 'white');
+      const score = this.minimax(newState, this.settings.maxDepth - 1, alpha, beta, gameState.turn !== 'white');
 
       if (gameState.turn === 'white') {
         if (score > bestScore) {
           bestScore = score;
           bestMove = move;
         }
+        if (this.settings.useAlphaBeta) {
+          alpha = Math.max(alpha, bestScore);
+        }
       } else {
         if (score < bestScore) {
           bestScore = score;
           bestMove = move;
         }
+        if (this.settings.useAlphaBeta) {
+          beta = Math.min(beta, bestScore);
+        }
+      }
+      if (this.settings.useAlphaBeta && alpha >= beta) {
+        break;
       }
     }
 
