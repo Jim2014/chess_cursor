@@ -107,34 +107,27 @@ const Board: React.FC = () => {
   const [playMode, setPlayMode] = useState<'auto' | 'manual'>('auto');
   const [canMakeNextMove, setCanMakeNextMove] = useState(false);
 
-  const [showHardSettings, setShowHardSettings] = useState(false);
-  const [hardSettings, setHardSettings] = useState<HardComputerSettings>({
-    maxDepth: 2,
-    moveDelay: 800,
-    useAlphaBeta: true
-  });
-
   const whiteComputerPlayer = useMemo(() => {
     switch (gameSettings.whitePlayerLevel) {
       case 'hard':
-        return new HardComputerPlayer(hardSettings);
+        return new HardComputerPlayer(gameSettings.whiteHardSettings);
       case 'medium':
         return new MediumComputerPlayer();
       default:
         return new ComputerPlayer();
     }
-  }, [gameSettings.whitePlayerLevel, hardSettings]);
+  }, [gameSettings.whitePlayerLevel, gameSettings.whiteHardSettings]);
   
   const blackComputerPlayer = useMemo(() => {
     switch (gameSettings.blackPlayerLevel) {
       case 'hard':
-        return new HardComputerPlayer(hardSettings);
+        return new HardComputerPlayer(gameSettings.blackHardSettings);
       case 'medium':
         return new MediumComputerPlayer();
       default:
         return new ComputerPlayer();
     }
-  }, [gameSettings.blackPlayerLevel, hardSettings]);
+  }, [gameSettings.blackPlayerLevel, gameSettings.blackHardSettings]);
 
   const [gameResult, setGameResult] = useState<GameResult | null>(null);
 
@@ -756,12 +749,6 @@ const Board: React.FC = () => {
       <button className="redo-button" onClick={handleRedo}>
         Redo
       </button>
-      {(gameSettings.whitePlayerLevel === 'hard' || 
-        gameSettings.blackPlayerLevel === 'hard') && (
-        <button onClick={() => setShowHardSettings(true)}>
-          Hard Settings
-        </button>
-      )}
     </div>
   );
 
@@ -803,6 +790,9 @@ const Board: React.FC = () => {
                 gameSettings.gameMode === 'computer' && gameSettings.computerColor === 'white' ? 
                 gameSettings.whitePlayerLevel : undefined
               }
+              hardSettings={
+                gameSettings.whitePlayerLevel === 'hard' ? gameSettings.whiteHardSettings : undefined
+              }
             />
             <PlayerInfo
               color="black"
@@ -812,6 +802,9 @@ const Board: React.FC = () => {
                 gameSettings.gameMode === 'computer-vs-computer' ? gameSettings.blackPlayerLevel :
                 gameSettings.gameMode === 'computer' && gameSettings.computerColor === 'black' ? 
                 gameSettings.blackPlayerLevel : undefined
+              }
+              hardSettings={
+                gameSettings.blackPlayerLevel === 'hard' ? gameSettings.blackHardSettings : undefined
               }
             />
           </div>
@@ -875,16 +868,6 @@ const Board: React.FC = () => {
             setShowSettings(true);
           }}
           onClose={() => setGameResult(null)}
-        />
-      )}
-      {showHardSettings && (
-        <HardSettingsDialog
-          initialSettings={hardSettings}
-          onSave={(settings: HardComputerSettings) => {
-            setHardSettings(settings);
-            setShowHardSettings(false);
-          }}
-          onCancel={() => setShowHardSettings(false)}
         />
       )}
     </div>

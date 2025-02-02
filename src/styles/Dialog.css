@@ -58,4 +58,27 @@
   width: 100px;
   padding: 4px;
   margin-left: 8px;
+}
+
+.level-settings {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.level-settings select {
+  flex: 1;
+}
+
+.hard-settings-button {
+  padding: 4px 8px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.hard-settings-button:hover {
+  background-color: #45a049;
 } 

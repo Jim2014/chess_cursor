@@ -6,12 +6,18 @@ interface PlayerInfoProps {
   gameMode: 'human' | 'computer' | 'computer-vs-computer';
   isCurrentTurn: boolean;
   computerLevel?: 'easy' | 'medium' | 'hard';
+  hardSettings?: {
+    maxDepth: number;
+    useAlphaBeta: boolean;
+  };
 }
 
-const PlayerInfo: React.FC<PlayerInfoProps> = ({ color, gameMode, isCurrentTurn, computerLevel }) => {
+const PlayerInfo: React.FC<PlayerInfoProps> = ({ color, gameMode, isCurrentTurn, computerLevel, hardSettings }) => {
   const getPlayerType = () => {
     if (gameMode === 'human') return 'Human';
-    if (gameMode === 'computer-vs-computer') return `Computer (${computerLevel})`;
+    if (computerLevel === 'hard' && hardSettings) {
+      return `Computer (hard, D${hardSettings.maxDepth}${hardSettings.useAlphaBeta ? '' : ', no AB'})`;
+    }
     return computerLevel ? `Computer (${computerLevel})` : 'Human';
   };
 
