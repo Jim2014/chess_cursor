@@ -59,6 +59,11 @@ export const isValidMove = (gameState: GameState, move: Move): boolean => {
     if (isKingInCheck(simulatedBoard, piece.color)) {
       return false;
     }
+    
+    // Automatic pawn promotion
+    if (piece.type === "pawn" && (move.to.row === 0 || move.to.row === 7)) {
+      simulatedBoard[move.to.row][move.to.col] = { ...piece, type: "queen" };
+    }
   }
 
   return isValid;

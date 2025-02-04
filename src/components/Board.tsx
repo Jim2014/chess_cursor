@@ -361,9 +361,18 @@ const Board: React.FC = () => {
       toPiece: board[move.to.row][move.to.col]?.type
     });
     
-    // Move the piece
-    newBoard[move.to.row][move.to.col] = board[move.from.row][move.from.col];
-    newBoard[move.from.row][move.from.col] = null;
+    // Apply promotion if specified
+    if (piece?.type === 'pawn' && (move.to.row === 0 || move.to.row === 7)) {
+      newBoard[move.from.row][move.from.col] = null;
+      newBoard[move.to.row][move.to.col] = {
+        ...piece,
+        type: move.promotion || 'queen' // Fallback to queen
+      };
+    } else {
+      // Regular move handling
+      newBoard[move.to.row][move.to.col] = piece;
+      newBoard[move.from.row][move.from.col] = null;
+    }
 
     console.log('Board state after move:', {
       fromPiece: newBoard[move.from.row][move.from.col]?.type,
