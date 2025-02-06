@@ -55,22 +55,6 @@ const createGameState = (board: BoardType, turn: Color = "white", lastMove: Move
   moveHistory: []
 });
 
-const getValidMoves = (board: BoardType, position: Coordinate): Coordinate[] => {
-  const moves: Coordinate[] = [];
-  
-  for (let row = 0; row < 8; row++) {
-    for (let col = 0; col < 8; col++) {
-      const move: Move = { from: position, to: { row, col } };
-      const gameState = createGameState(board, "white", null);
-      if (isValidMove(gameState, move)) {
-        moves.push({ row, col });
-      }
-    }
-  }
-  
-  return moves;
-};
-
 const Board: React.FC = () => {
   // Current game state
   const [board, setBoard] = useState<BoardType>(initialBoardSetup());
