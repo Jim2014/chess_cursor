@@ -399,22 +399,27 @@ const Board: React.FC = () => {
         type: 'checkmate',
         winner: turn
       });
+      setPlayMode('manual'); // Force pause when result dialog shows
     } else if (isStalemate(newGameState)) {
       setGameResult({
         type: 'stalemate'
       });
+      setPlayMode('manual'); // Force pause when result dialog shows
     } else if (hasInsufficientMaterial(newBoard)) {
       setGameResult({
         type: 'insufficient-material'
       });
+      setPlayMode('manual'); // Force pause when result dialog shows
     } else if (isThreefoldRepetition(moveHistory)) {
       setGameResult({
         type: 'threefold-repetition'
       });
+      setPlayMode('manual'); // Force pause when result dialog shows
     } else if (isFiftyMoveRule(moveHistory)) {
       setGameResult({
         type: 'fifty-move'
       });
+      setPlayMode('manual'); // Force pause when result dialog shows
     }
 
     // Create move description with check/checkmate status
