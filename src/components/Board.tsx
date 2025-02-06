@@ -2,7 +2,17 @@ import React, { useState, useEffect, useMemo } from "react";
 import Square from "./Square";
 import MoveHistory from "./MoveHistory";
 import "../styles/Board.css";
-import { Position, Piece, Move, GameState, MoveWithSnapshot, BoardSnapshot, PromotionType } from "../logic/types";
+import { 
+  BoardType, 
+  Piece, 
+  Move, 
+  GameState, 
+  MoveWithSnapshot, 
+  BoardSnapshot, 
+  PromotionType,
+  Color,
+  Coordinate
+} from "../logic/types";
 import { initialBoardSetup } from "../logic/GameManager";
 import { isValidMove, isKingInCheck, isCheckmate } from "../logic/ChessRulesEngine";
 import SaveGameDialog from './SaveGameDialog';
@@ -22,7 +32,7 @@ interface SavedGame {
   date: string;
   state: {
     board: (Piece | null)[][];
-    turn: "white" | "black";
+    turn: Color;
     castlingRights: {
       white: { kingSide: boolean; queenSide: boolean };
       black: { kingSide: boolean; queenSide: boolean };
@@ -33,7 +43,7 @@ interface SavedGame {
   };
 }
 
-const createGameState = (board: (Piece | null)[][], turn: "white" | "black" = "white", lastMove: Move | null): GameState => ({
+const createGameState = (board: BoardType, turn: Color = "white", lastMove: Move | null): GameState => ({
   board,
   turn,
   lastMove,
@@ -45,8 +55,8 @@ const createGameState = (board: (Piece | null)[][], turn: "white" | "black" = "w
   moveHistory: []
 });
 
-const getValidMoves = (board: (Piece | null)[][], position: { row: number; col: number }): { row: number; col: number }[] => {
-  const moves: { row: number; col: number }[] = [];
+const getValidMoves = (board: BoardType, position: Coordinate): Coordinate[] => {
+  const moves: Coordinate[] = [];
   
   for (let row = 0; row < 8; row++) {
     for (let col = 0; col < 8; col++) {
@@ -63,10 +73,10 @@ const getValidMoves = (board: (Piece | null)[][], position: { row: number; col: 
 
 const Board: React.FC = () => {
   // Current game state
-  const [board, setBoard] = useState<(Piece | null)[][]>(initialBoardSetup());
-  const [selectedPosition, setSelectedPosition] = useState<Position | null>(null);
-  const [allowedMoves, setAllowedMoves] = useState<Position[]>([]);
-  const [turn, setTurn] = useState<"white" | "black">("white");
+  const [board, setBoard] = useState<BoardType>(initialBoardSetup());
+  const [selectedPosition, setSelectedPosition] = useState<Coordinate | null>(null);
+  const [allowedMoves, setAllowedMoves] = useState<Coordinate[]>([]);
+  const [turn, setTurn] = useState<Color>("white");
   const [moveHistory, setMoveHistory] = useState<MoveWithSnapshot[]>([]);
 
   // Undo/redo stacks
@@ -89,9 +99,9 @@ const Board: React.FC = () => {
   const [savedGames, setSavedGames] = useState<SavedGame[]>([]);
 
   // Add these state variables at the top with other state declarations
-  const [promotionSquare, setPromotionSquare] = useState<Position | null>(null);
+  const [promotionSquare, setPromotionSquare] = useState<Coordinate | null>(null);
   const [showPromotionDialog, setShowPromotionDialog] = useState(false);
-  const [pendingMove, setPendingMove] = useState<{ from: Position; to: Position } | null>(null);
+  const [pendingMove, setPendingMove] = useState<{ from: Coordinate; to: Coordinate } | null>(null);
 
   // Add these new state variables
   const [showSettings, setShowSettings] = useState(false);
@@ -183,12 +193,12 @@ const Board: React.FC = () => {
       computerMoveCount, playMode, canMakeNextMove]);
 
   // Compute allowed moves for the selected piece.
-  const computeAllowedMoves = (position: Position): Position[] => {
+  const computeAllowedMoves = (position: Coordinate): Coordinate[] => {
     const piece = board[position.row][position.col];
     if (!piece) return [];
     if (piece.color !== turn) return [];
 
-    const moves: Position[] = [];
+    const moves: Coordinate[] = [];
     const gameState = createGameState(board, turn, lastMove);
     gameState.castlingRights = castlingRights;
 
@@ -307,7 +317,7 @@ const Board: React.FC = () => {
     lastMove
   });
 
-  const getMoveDescription = (from: Position, to: Position): string => {
+  const getMoveDescription = (from: Coordinate, to: Coordinate): string => {
     const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
     const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
     return `${files[from.col]}${ranks[from.row]} → ${files[to.col]}${ranks[to.row]}`;
@@ -445,7 +455,7 @@ const Board: React.FC = () => {
     setLastMove(move);
   };
 
-  const handleSquareClick = (position: Position) => {
+  const handleSquareClick = (position: Coordinate) => {
     if (gameSettings.gameMode === 'computer-vs-computer' || 
         (gameSettings.gameMode === 'computer' && turn === gameSettings.computerColor)) {
       return;
@@ -685,7 +695,7 @@ const Board: React.FC = () => {
   };
 
   const renderSquare = (row: number, col: number) => {
-    const position: Position = { row, col };
+    const position: Coordinate = { row, col };
     const piece = board[row][col];
     const isSelected =
       selectedPosition &&
