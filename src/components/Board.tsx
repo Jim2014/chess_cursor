@@ -571,6 +571,7 @@ const Board: React.FC = () => {
     setLastMove(previousSnapshot.lastMove);
     setSelectedPosition(null);
     setAllowedMoves([]);
+    setComputerLastMove(null); // Reset computer last move
   };
 
   // Redo: Restore the state from the redo stack.
@@ -600,6 +601,7 @@ const Board: React.FC = () => {
     setBoard(newBoard);
     setTurn(turn === "white" ? "black" : "white");
     setLastMove(nextMove.move);
+    setComputerLastMove(nextMove.move); // Set computer last move for highlighting
     setSelectedPosition(null);
     setAllowedMoves([]);
   };
