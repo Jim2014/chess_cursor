@@ -1,6 +1,6 @@
 import { isValidMove } from '../../logic/ChessRulesEngine';
 import { GameState, Piece } from '../../logic/types';
-import { createEmptyGameState, addPieceToBoard } from '../helpers/testUtils';
+import { createEmptyGameState, addPieceToBoard } from '../../utils/testUtils';
 
 describe('ChessRulesEngine', () => {
   let gameState: GameState;

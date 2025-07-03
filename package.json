@@ -6,7 +6,7 @@
   "scripts": {
     "start": "craco start",
     "build": "craco build",
-    "test": "react-scripts test",
+    "test": "craco test --watchAll=false",
     "test:unit": "jest src/__tests__/logic",
     "test:integration": "jest src/__tests__/components",
     "test:all": "jest",

@@ -1,4 +1,4 @@
-import { Piece, Move, GameState, MoveWithSnapshot } from "./types";
+import { Piece, Move, GameState, MoveWithSnapshot, Coordinate, Color, CastlingRights } from "./types";
 
 /**
  * Checks whether the given position is inside the board boundaries.
@@ -446,6 +446,129 @@ export const isFiftyMoveRule = (moveHistory: MoveWithSnapshot[]): boolean => {
   }
   
   return false;
+};
+
+const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
+
+export const toAlgebraic = (coord: Coordinate): string => {
+  return `${files[coord.col]}${ranks[coord.row]}`;
+};
+
+export const toSan = (
+  initialBoard: (Piece | null)[][],
+  move: Move,
+  turn: Color,
+  lastMove: Move | null,
+  castlingRights: CastlingRights
+): string => {
+  const { from, to, promotion } = move;
+  const piece = initialBoard[from.row][from.col];
+  if (!piece) return ''; // Should not happen
+
+  const targetPiece = initialBoard[to.row][to.col];
+  const isCapture = targetPiece !== null || (piece.type === 'pawn' && from.col !== to.col && initialBoard[to.row][to.col] === null);
+
+  // Simulate the move to check for check/checkmate
+  const simulatedBoard = simulateMove(initialBoard, move);
+  const simulatedGameState: GameState = {
+    board: simulatedBoard,
+    turn: turn === 'white' ? 'black' : 'white', // Next turn
+    castlingRights: castlingRights,
+    isCheck: false,
+    lastMove: move,
+    moveHistory: []
+  };
+  const causesCheck = isKingInCheck(simulatedBoard, turn === 'white' ? 'black' : 'white');
+  const causesCheckmate = causesCheck && isCheckmate(simulatedGameState, turn === 'white' ? 'black' : 'white');
+
+  // Castling
+  if (piece.type === 'king' && Math.abs(from.col - to.col) === 2) {
+    return to.col === 6 ? 'O-O' : 'O-O-O';
+  }
+
+  let san = '';
+
+  // Piece abbreviation (empty for pawns)
+  if (piece.type !== 'pawn') {
+    san += piece.type === 'knight' ? 'N' :
+           piece.type === 'bishop' ? 'B' :
+           piece.type === 'rook' ? 'R' :
+           piece.type === 'queen' ? 'Q' :
+           piece.type === 'king' ? 'K' : '';
+  }
+
+  // Disambiguation (for non-pawn pieces)
+  if (piece.type !== 'pawn') {
+    const possibleOriginSquares: Coordinate[] = [];
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const otherPiece = initialBoard[r][c];
+        if (otherPiece && otherPiece.type === piece.type && otherPiece.color === piece.color &&
+            !(r === from.row && c === from.col)) {
+          const tempMove: Move = { from: { row: r, col: c }, to };
+          const tempGameState: GameState = {
+            board: initialBoard,
+            turn,
+            castlingRights,
+            isCheck: false,
+            lastMove,
+            moveHistory: []
+          };
+          if (isValidMove(tempGameState, tempMove)) {
+            possibleOriginSquares.push({ row: r, col: c });
+          }
+        }
+      }
+    }
+
+    if (possibleOriginSquares.length > 0) {
+      let needsFileDisambiguation = false;
+      let needsRankDisambiguation = false;
+
+      for (const origin of possibleOriginSquares) {
+        if (origin.col === from.col) {
+          needsFileDisambiguation = true;
+        }
+        if (origin.row === from.row) {
+          needsRankDisambiguation = true;
+        }
+      }
+
+      if (needsFileDisambiguation && needsRankDisambiguation) {
+        san += toAlgebraic(from);
+      } else if (needsFileDisambiguation) {
+        san += files[from.col];
+      } else if (needsRankDisambiguation) {
+        san += ranks[from.row];
+      }
+    }
+  }
+
+  // Capture indicator
+  if (isCapture) {
+    if (piece.type === 'pawn' && from.col !== to.col) {
+      san += files[from.col];
+    }
+    san += 'x';
+  }
+
+  // Destination square
+  san += toAlgebraic(to);
+
+  // Promotion
+  if (promotion) {
+    san += `=${promotion.toUpperCase()}`;
+  }
+
+  // Check/Checkmate indicator
+  if (causesCheckmate) {
+    san += '#';
+  } else if (causesCheck) {
+    san += '+';
+  }
+
+  return san;
 };
 
 export { isInBounds, isKingInCheck, isCheckmate };

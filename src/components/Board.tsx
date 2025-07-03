@@ -14,7 +14,7 @@ import {
   Coordinate
 } from "../logic/types";
 import { initialBoardSetup } from "../logic/GameManager";
-import { isValidMove, isKingInCheck, isCheckmate } from "../logic/ChessRulesEngine";
+import { isValidMove, isKingInCheck, isCheckmate, toSan } from "../logic/ChessRulesEngine";
 import SaveGameDialog from './SaveGameDialog';
 import LoadGameDialog from './LoadGameDialog';
 import PromotionDialog from './PromotionDialog';
@@ -315,11 +315,7 @@ const Board: React.FC = () => {
     lastMove
   });
 
-  const getMoveDescription = (from: Coordinate, to: Coordinate): string => {
-    const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-    const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
-    return `${files[from.col]}${ranks[from.row]} → ${files[to.col]}${ranks[to.row]}`;
-  };
+  
 
   const makeMove = (move: Move) => {
     const currentSnapshot = createBoardSnapshot();
@@ -436,13 +432,8 @@ const Board: React.FC = () => {
       setPlayMode('manual'); // Force pause when result dialog shows
     }
 
-    // Create move description with check/checkmate status
-    let moveDesc = getMoveDescription(move.from, move.to);
-    if (isInCheckmate) {
-      moveDesc += " #"; // Chess notation for checkmate
-    } else if (isInCheck) {
-      moveDesc += " +"; // Chess notation for check
-    }
+    // Create move description with SAN notation
+    const moveDesc = toSan(currentSnapshot.board, move, currentSnapshot.turn, currentSnapshot.lastMove, currentSnapshot.castlingRights);
 
     // Create move with snapshot
     const moveWithSnapshot: MoveWithSnapshot = {
@@ -557,10 +548,11 @@ const Board: React.FC = () => {
 
     setBoard(newBoard);
     setTurn(turn === "white" ? "black" : "white");
+    const currentSnapshot = createBoardSnapshot(); // Capture snapshot BEFORE board modification
     setMoveHistory([...moveHistory, {
       move,
-      description: getMoveDescription(pendingMove.from, pendingMove.to),
-      snapshot: createBoardSnapshot()
+      description: toSan(currentSnapshot.board, move, currentSnapshot.turn, currentSnapshot.lastMove, currentSnapshot.castlingRights), // Use toSan with correct snapshot
+      snapshot: currentSnapshot // Use the snapshot before the move
     }]);
     setSelectedPosition(null);
     setPromotionSquare(null);

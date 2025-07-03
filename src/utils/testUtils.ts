@@ -1,4 +1,4 @@
-import { GameState, Piece } from '../../logic/types';
+import { GameState, Piece, BoardType, Coordinate, ChessSquare } from '../logic/types';
 
 export const createEmptyGameState = (): GameState => {
   const emptyBoard: (Piece | null)[][] = Array(8).fill(null).map(() => Array(8).fill(null));
@@ -20,10 +20,10 @@ export const addPieceToBoard = (
   piece: Piece,
   position: { row: number; col: number }
 ): GameState => {
-  const newBoard = gameState.board.map(row => [...row]);
+  const newBoard = gameState.board.map((row: ChessSquare[]) => [...row]);
   newBoard[position.row][position.col] = piece;
   return {
     ...gameState,
     board: newBoard
   };
-}; 
+};

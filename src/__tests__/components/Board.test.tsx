@@ -4,6 +4,7 @@ import '@testing-library/jest-dom';
 import Board from '../../components/Board';
 import { initialBoardSetup } from '../../logic/GameManager';
 import { act } from 'react';
+import '../../setup/localStorage';
 
 // Clear localStorage before each test
 beforeEach(() => {
@@ -278,7 +279,7 @@ describe('Board Component', () => {
       const { container } = render(<Board />);
 
       // Reset the game
-      fireEvent.click(screen.getByText('Reset Game'));
+      fireEvent.click(screen.getByText('New Game'));
 
       // Load the saved game
       fireEvent.click(screen.getByText('Load Game'));
@@ -306,4 +307,4 @@ describe('Board Component', () => {
   });
 });
 
-export {}; // This makes the file a module 
+export {}; // This makes the file a module
