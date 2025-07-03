@@ -4,15 +4,20 @@ This is a classic chess game built with React and TypeScript. It features a clea
 
 ## Features
 
-*   **Play against AI:** Challenge a computer opponent with varying difficulty levels (Medium, Hard).
-*   **Player vs. Player:** Play against another person on the same computer.
-*   **Save/Load Game:** Save your game progress and load it back later.
-*   **Move History:** Keep track of all the moves made during the game.
-*   **Promotion:** Promote pawns to other pieces when they reach the end of the board.
-*   **Game End Detection:** The game detects checkmate and stalemate conditions.
+- **Play against AI:** Challenge a computer opponent with varying difficulty levels (Medium, Hard).
+- **Player vs. Player:** Play against another person on the same computer.
+- **Save/Load Game:** Save your game progress and load it back later.
+- **Move History:** Keep track of all the moves made during the game.
+- **Promotion:** Promote pawns to other pieces when they reach the end of the board.
+- **Game End Detection:** The game detects checkmate, stalemate, insufficient material, threefold repetition, and the fifty-move rule.
+- **AI Suggestions:** Get move suggestions from Google's Gemini AI.
+- **Undo/Redo:** Take back or replay moves.
+- **FEN Support:** Generate a FEN string for the current game state to share or analyze.
+- **Computer vs. Computer:** Watch two AI players battle it out.
 
 ## Demo
-* https://jim2014.github.io/chess_cursor/
+
+- https://jim2014.github.io/chess_cursor/
 
 ## Getting Started
 
@@ -22,8 +27,8 @@ These instructions will get you a copy of the project up and running on your loc
 
 You need to have Node.js and npm (or yarn) installed on your machine.
 
-*   [Node.js](https://nodejs.org/)
-*   [npm](https://www.npmjs.com/get-npm)
+- [Node.js](https://nodejs.org/)
+- [npm](https://www.npmjs.com/get-npm)
 
 ### Installation
 
@@ -50,7 +55,12 @@ You will also see any lint errors in the console.
 
 ### `npm test`
 
-Launches the test runner in the interactive watch mode.
+Launches the test runner in the interactive watch mode. You can also run unit and integration tests separately:
+
+```sh
+npm run test:unit
+npm run test:integration
+```
 
 ### `npm run build`
 
@@ -62,8 +72,9 @@ Your app is ready to be deployed!
 
 ## Technologies Used
 
-*   [React](https://reactjs.org/)
-*   [TypeScript](https://www.typescriptlang.org/)
-*   [Create React App](https://create-react-app.dev/) (with [Craco](https://craco.js.org/))
-*   [Jest](https://jestjs.io/)
-*   [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/)
+- [React](https://reactjs.org/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [Create React App](https://create-react-app.dev/) (with [Craco](https://craco.js.org/))
+- [Jest](https://jestjs.io/)
+- [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/)
+- [GitHub Pages](https://pages.github.com/) (for deployment)
