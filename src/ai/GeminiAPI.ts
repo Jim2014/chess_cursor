@@ -34,6 +34,6 @@ FEN: ${fen}`;
       return suggestion;
     } catch (error) {
       console.error('Error getting suggestion from Gemini:', error);
-      return null;
+      throw error;
     }
   };

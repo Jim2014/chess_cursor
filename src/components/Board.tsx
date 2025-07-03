@@ -109,6 +109,7 @@ const Board: React.FC = () => {
   const [geminiModelName, setGeminiModelName] = useState<string | undefined>(undefined);
   const [showSuggestion, setShowSuggestion] = useState(false);
   const [suggestion, setSuggestion] = useState<GeminiSuggestion | null>(null);
+  const [isFetchingSuggestion, setIsFetchingSuggestion] = useState(false);
 
   const whiteComputerPlayer = useMemo(() => {
     switch (gameSettings.whitePlayerLevel) {
@@ -703,10 +704,19 @@ const Board: React.FC = () => {
       setShowGeminiSettings(true);
       return;
     }
-    const fen = generateFen();
-    const suggestion = await getGeminiSuggestion(fen, geminiApiKey, geminiModelName);
-    if (suggestion) {
-      setSuggestion(suggestion);
+    setIsFetchingSuggestion(true);
+    setSuggestion(null); // Clear previous suggestion
+    try {
+      const fen = generateFen();
+      const suggestion = await getGeminiSuggestion(fen, geminiApiKey, geminiModelName);
+      if (suggestion) {
+        setSuggestion(suggestion);
+      }
+    } catch (error) {
+      console.error("Failed to get AI suggestion:", error);
+      alert("Failed to get AI suggestion. Please check your API key and model name.");
+    } finally {
+      setIsFetchingSuggestion(false);
     }
   };
 
@@ -1085,6 +1095,7 @@ const Board: React.FC = () => {
             suggestion={suggestion}
             onClose={() => setSuggestion(null)}
             onMakeMove={handleMakeSuggestedMove}
+            isFetchingSuggestion={isFetchingSuggestion}
           />
         </div>
       </div>

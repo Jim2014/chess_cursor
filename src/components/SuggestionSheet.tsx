@@ -8,9 +8,10 @@ interface SuggestionSheetProps {
   } | null;
   onClose: () => void;
   onMakeMove: (move: string) => void;
+  isFetchingSuggestion: boolean;
 }
 
-const SuggestionSheet: React.FC<SuggestionSheetProps> = ({ suggestion, onClose, onMakeMove }) => {
+const SuggestionSheet: React.FC<SuggestionSheetProps> = ({ suggestion, onClose, onMakeMove, isFetchingSuggestion }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
@@ -18,6 +19,19 @@ const SuggestionSheet: React.FC<SuggestionSheetProps> = ({ suggestion, onClose, 
       setIsCollapsed(false); // Expand when a new suggestion arrives
     }
   }, [suggestion]);
+
+  if (isFetchingSuggestion) {
+    return (
+      <div className="suggestion-sidebar">
+        <div className="sidebar-header">
+          <h2>AI Suggestion</h2>
+        </div>
+        <div className="sidebar-content">
+          <p>Getting suggestion from Gemini...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!suggestion) return null;
 
