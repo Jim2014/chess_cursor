@@ -707,7 +707,6 @@ const Board: React.FC = () => {
     const suggestion = await getGeminiSuggestion(fen, geminiApiKey, geminiModelName);
     if (suggestion) {
       setSuggestion(suggestion);
-      setShowSuggestion(true);
     }
   };
 
@@ -799,7 +798,7 @@ const Board: React.FC = () => {
     } else {
         alert(`Could not understand the suggested move: ${moveStr}`);
     }
-    setShowSuggestion(false);
+    
   };
 
   const generateFen = (): string => {
@@ -1082,6 +1081,11 @@ const Board: React.FC = () => {
         </div>
         <div className="side-panel">
           <MoveHistory moves={moveHistory} />
+          <SuggestionSheet
+            suggestion={suggestion}
+            onClose={() => setSuggestion(null)}
+            onMakeMove={handleMakeSuggestedMove}
+          />
         </div>
       </div>
       {showSaveDialog && (
@@ -1133,13 +1137,6 @@ const Board: React.FC = () => {
           initialModelName={geminiModelName}
           onSave={handleSaveGeminiSettings}
           onCancel={() => setShowGeminiSettings(false)}
-        />
-      )}
-      {showSuggestion && (
-        <SuggestionSheet
-          suggestion={suggestion}
-          onClose={() => setShowSuggestion(false)}
-          onMakeMove={handleMakeSuggestedMove}
         />
       )}
     </div>

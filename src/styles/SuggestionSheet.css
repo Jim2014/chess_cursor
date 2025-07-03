@@ -1,26 +1,53 @@
-.suggestion-sheet-overlay {
+.suggestion-sidebar {
   position: fixed;
   top: 0;
-  left: 0;
   right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: flex-end;
+  width: 300px; /* Adjust as needed */
+  height: 100%;
+  background: white;
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
+  transition: width 0.3s ease-in-out;
   z-index: 1000;
+  display: flex;
+  flex-direction: column;
 }
 
-.suggestion-sheet {
-  background: white;
-  padding: 20px;
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
-  width: 100%;
-  max-width: 600px;
-  box-sizing: border-box;
+.suggestion-sidebar.collapsed {
+  width: 50px; /* Adjust as needed for collapsed state */
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background-color: #f0f0f0;
+  border-bottom: 1px solid #ccc;
+}
+
+.sidebar-header h2 {
+  margin: 0;
+  font-size: 1.2em;
+}
+
+.collapse-button {
+  background: none;
+  border: none;
+  font-size: 1.5em;
+  cursor: pointer;
+}
+
+.sidebar-content {
+  padding: 10px;
+  overflow-y: auto;
 }
 
 .suggestion-content {
   margin-bottom: 20px;
+}
+
+.dialog-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
 }
