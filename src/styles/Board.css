@@ -188,6 +188,16 @@
   background-color: #2196F3; /* Blue */
 }
 
+.ai-suggestion-button {
+  background-color: #4CAF50; /* Green */
+}
+
+.settings-button {
+  background-color: #ff9800; /* Orange */
+  font-size: 1.2em;
+  padding: 5px 8px;
+}
+
 /* Add this to ensure squares are consistent size */
 .square {
   width: min(50px, calc((100vw - 70px) / 8));

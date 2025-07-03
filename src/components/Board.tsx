@@ -26,6 +26,9 @@ import { isStalemate, hasInsufficientMaterial, isThreefoldRepetition, isFiftyMov
 import PlayerInfo from './PlayerInfo';
 import { HardComputerPlayer, type HardComputerSettings } from '../ai/HardComputerPlayer';
 import HardSettingsDialog from './HardComputerSettings';
+import GeminiSettingsDialog from './GeminiSettingsDialog';
+import SuggestionSheet from './SuggestionSheet';
+import { getGeminiSuggestion, GeminiSuggestion } from '../ai/GeminiAPI';
 
 interface SavedGame {
   name: string;
@@ -101,6 +104,12 @@ const Board: React.FC = () => {
   const [playMode, setPlayMode] = useState<'auto' | 'manual'>('auto');
   const [canMakeNextMove, setCanMakeNextMove] = useState(false);
 
+  const [showGeminiSettings, setShowGeminiSettings] = useState(false);
+  const [geminiApiKey, setGeminiApiKey] = useState<string | undefined>(undefined);
+  const [geminiModelName, setGeminiModelName] = useState<string | undefined>(undefined);
+  const [showSuggestion, setShowSuggestion] = useState(false);
+  const [suggestion, setSuggestion] = useState<GeminiSuggestion | null>(null);
+
   const whiteComputerPlayer = useMemo(() => {
     switch (gameSettings.whitePlayerLevel) {
       case 'hard':
@@ -131,6 +140,10 @@ const Board: React.FC = () => {
     if (saves) {
       setSavedGames(JSON.parse(saves));
     }
+    const apiKey = localStorage.getItem('geminiApiKey');
+    const modelName = localStorage.getItem('geminiModelName');
+    if (apiKey) setGeminiApiKey(apiKey);
+    if (modelName) setGeminiModelName(modelName);
   }, []);
 
   // Update computer move effect
@@ -685,6 +698,27 @@ const Board: React.FC = () => {
     setSavedGames(newSaves);
   };
 
+  const handleAiSuggestion = async () => {
+    if (!geminiApiKey || !geminiModelName) {
+      setShowGeminiSettings(true);
+      return;
+    }
+    const fen = generateFen();
+    const suggestion = await getGeminiSuggestion(fen, geminiApiKey, geminiModelName);
+    if (suggestion) {
+      setSuggestion(suggestion);
+      setShowSuggestion(true);
+    }
+  };
+
+  const handleSaveGeminiSettings = (apiKey: string, modelName: string) => {
+    setGeminiApiKey(apiKey);
+    setGeminiModelName(modelName);
+    localStorage.setItem('geminiApiKey', apiKey);
+    localStorage.setItem('geminiModelName', modelName);
+    setShowGeminiSettings(false);
+  };
+
   const generateFen = (): string => {
     let fen = '';
 
@@ -857,6 +891,12 @@ const Board: React.FC = () => {
       <button className="fen-button" onClick={handleCopyFen}>
         FEN
       </button>
+      <button className="ai-suggestion-button" onClick={handleAiSuggestion}>
+        AI Suggestion
+      </button>
+      <button className="settings-button" onClick={() => setShowGeminiSettings(true)}>
+        &#9881; {/* Settings icon */}
+      </button>
     </div>
   );
 
@@ -1002,6 +1042,20 @@ const Board: React.FC = () => {
             setShowSettings(true);
           }}
           onClose={() => setGameResult(null)}
+        />
+      )}
+      {showGeminiSettings && (
+        <GeminiSettingsDialog
+          initialApiKey={geminiApiKey}
+          initialModelName={geminiModelName}
+          onSave={handleSaveGeminiSettings}
+          onCancel={() => setShowGeminiSettings(false)}
+        />
+      )}
+      {showSuggestion && (
+        <SuggestionSheet
+          suggestion={suggestion}
+          onClose={() => setShowSuggestion(false)}
         />
       )}
     </div>
