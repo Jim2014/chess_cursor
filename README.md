@@ -11,6 +11,9 @@ This is a classic chess game built with React and TypeScript. It features a clea
 *   **Promotion:** Promote pawns to other pieces when they reach the end of the board.
 *   **Game End Detection:** The game detects checkmate and stalemate conditions.
 
+## Demo
+* https://jim2014.github.io/chess_cursor/
+
 ## Getting Started
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
