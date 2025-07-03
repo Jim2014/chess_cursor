@@ -715,6 +715,7 @@ const Board: React.FC = () => {
   const handleSaveGeminiSettings = (apiKey: string, modelName: string) => {
     setGeminiApiKey(apiKey);
     setGeminiModelName(modelName);
+    localStorage.setItem('geminiApiKey', apiKey);
     localStorage.setItem('geminiModelName', modelName);
     setShowGeminiSettings(false);
   };
