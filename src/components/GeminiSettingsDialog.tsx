@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 
 interface GeminiSettingsDialogProps {
   onSave: (apiKey: string, modelName: string) => void;
@@ -10,6 +10,8 @@ interface GeminiSettingsDialogProps {
 const GeminiSettingsDialog: React.FC<GeminiSettingsDialogProps> = ({ onSave, onCancel, initialApiKey = '', initialModelName = '' }) => {
   const [apiKey, setApiKey] = useState(initialApiKey);
   const [modelName, setModelName] = useState(initialModelName);
+  const [showApiKey, setShowApiKey] = useState(false);
+  const apiKeyInputRef = useRef<HTMLInputElement>(null);
 
   const handleSave = () => {
     onSave(apiKey, modelName);
@@ -21,12 +23,23 @@ const GeminiSettingsDialog: React.FC<GeminiSettingsDialogProps> = ({ onSave, onC
         <h2>Gemini Settings</h2>
         <div className="form-group">
           <label htmlFor="apiKey">API Key</label>
-          <input
-            id="apiKey"
-            type="text"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-          />
+          <div className="api-key-input-group">
+            <input
+              id="apiKey"
+              type={showApiKey ? 'text' : 'password'}
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              ref={apiKeyInputRef}
+            />
+            <button
+              type="button"
+              onClick={() => setShowApiKey(!showApiKey)}
+              className="toggle-api-key-button"
+            >
+              {showApiKey ? 'Hide' : 'Show'}
+            </button>
+          </div>
+          <p className="api-key-note">Your API Key is saved in local storage only and is not sent to any server.</p>
         </div>
         <div className="form-group">
           <label htmlFor="modelName">Model Name</label>

@@ -129,4 +129,34 @@
   width: 100%;
   padding: 8px;
   box-sizing: border-box;
-} 
+}
+
+.api-key-input-group {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.api-key-input-group input {
+  flex-grow: 1;
+  margin-right: 10px;
+}
+
+.toggle-api-key-button {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #f0f0f0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.toggle-api-key-button:hover {
+  background-color: #e0e0e0;
+}
+
+.api-key-note {
+  font-size: 0.8em;
+  color: #666;
+  margin-top: 5px;
+}
