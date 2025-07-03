@@ -691,18 +691,22 @@ const Board: React.FC = () => {
     setSavedGames(newSaves);
   };
 
-  const handleAiSuggestion = async () => {
+  const handleAiSuggestion = () => {
+    setShowSuggestion(true);
+  };
+
+  const fetchNewSuggestion = async () => {
     if (!geminiApiKey || !geminiModelName) {
       setShowGeminiSettings(true);
       return;
     }
+
     setIsFetchingSuggestion(true);
-    setSuggestion(null); // Clear previous suggestion
     try {
       const fen = generateFen();
-      const suggestion = await getGeminiSuggestion(fen, geminiApiKey, geminiModelName);
-      if (suggestion) {
-        setSuggestion(suggestion);
+      const newSuggestion = await getGeminiSuggestion(fen, geminiApiKey, geminiModelName);
+      if (newSuggestion) {
+        setSuggestion(newSuggestion);
       }
     } catch (error) {
       console.error("Failed to get AI suggestion:", error);
@@ -801,7 +805,6 @@ const Board: React.FC = () => {
     } else {
         alert(`Could not understand the suggested move: ${moveStr}`);
     }
-    
   };
 
   const generateFen = (): string => {
@@ -1085,9 +1088,11 @@ const Board: React.FC = () => {
         <div className="side-panel">
           <MoveHistory moves={moveHistory} />
           <SuggestionSheet
+            isOpen={showSuggestion}
             suggestion={suggestion}
-            onClose={() => setSuggestion(null)}
+            onClose={() => setShowSuggestion(false)}
             onMakeMove={handleMakeSuggestedMove}
+            onFetchNew={fetchNewSuggestion}
             isFetchingSuggestion={isFetchingSuggestion}
           />
         </div>

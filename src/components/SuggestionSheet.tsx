@@ -2,59 +2,39 @@ import React, { useState, useEffect } from 'react';
 import '../styles/SuggestionSheet.css';
 
 interface SuggestionSheetProps {
+  isOpen: boolean;
   suggestion: {
     move: string;
     explain: string;
   } | null;
   onClose: () => void;
   onMakeMove: (move: string) => void;
+  onFetchNew: () => void;
   isFetchingSuggestion: boolean;
 }
 
-const SuggestionSheet: React.FC<SuggestionSheetProps> = ({ suggestion, onClose, onMakeMove, isFetchingSuggestion }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
-
-  useEffect(() => {
-    if (suggestion) {
-      setIsCollapsed(false); // Expand when a new suggestion arrives
-    }
-  }, [suggestion]);
-
-  if (isFetchingSuggestion) {
-    return (
-      <div className="suggestion-sidebar">
-        <div className="sidebar-header">
-          <h2>AI Suggestion</h2>
-        </div>
-        <div className="sidebar-content">
-          <p>Getting suggestion from Gemini...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!suggestion) return null;
-
+const SuggestionSheet: React.FC<SuggestionSheetProps> = ({ isOpen, suggestion, onClose, onMakeMove, onFetchNew, isFetchingSuggestion }) => {
   return (
-    <div className={`suggestion-sidebar ${isCollapsed ? 'collapsed' : ''}`}>
+    <div className={`suggestion-sidebar ${isOpen ? 'open' : ''}`}>
       <div className="sidebar-header">
-        <h2>AI Suggestion</h2>
-        <button className="collapse-button" onClick={() => setIsCollapsed(!isCollapsed)}>
-          {isCollapsed ? '>' : '<'}
-        </button>
+        <div className="header-buttons">
+          {suggestion && <button onClick={() => onMakeMove(suggestion.move)}>Action</button>}
+          <button onClick={onFetchNew}>Suggestion</button>
+          <button className="close-button" onClick={onClose}>&times;</button>
+        </div>
       </div>
-      {!isCollapsed && (
-        <div className="sidebar-content">
+      <div className="sidebar-content">
+        {isFetchingSuggestion ? (
+          <p>Getting suggestion from Gemini...</p>
+        ) : suggestion ? (
           <div className="suggestion-content">
             <p><strong>Suggested Move:</strong> {suggestion.move}</p>
             <p><strong>Explanation:</strong> {suggestion.explain}</p>
           </div>
-          <div className="dialog-buttons">
-            <button onClick={() => onMakeMove(suggestion.move)}>Make Move</button>
-            <button onClick={onClose}>Close</button>
-          </div>
-        </div>
-      )}
+        ) : (
+          <p>Click "Suggestion" to get a move recommendation.</p>
+        )}
+      </div>
     </div>
   );
 };
