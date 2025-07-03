@@ -29,7 +29,7 @@ You need to have Node.js and npm (or yarn) installed on your machine.
 
 1.  Clone the repo
     ```sh
-    git clone https://github.com/your_username/chess-game.git
+    git clone https://github.com/jim2014/chess-game.git
     ```
 2.  Install NPM packages
     ```sh
