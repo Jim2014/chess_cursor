@@ -6,9 +6,10 @@ interface SuggestionSheetProps {
     explain: string;
   } | null;
   onClose: () => void;
+  onMakeMove: (move: string) => void;
 }
 
-const SuggestionSheet: React.FC<SuggestionSheetProps> = ({ suggestion, onClose }) => {
+const SuggestionSheet: React.FC<SuggestionSheetProps> = ({ suggestion, onClose, onMakeMove }) => {
   if (!suggestion) return null;
 
   return (
@@ -19,7 +20,10 @@ const SuggestionSheet: React.FC<SuggestionSheetProps> = ({ suggestion, onClose }
           <p><strong>Suggested Move:</strong> {suggestion.move}</p>
           <p><strong>Explanation:</strong> {suggestion.explain}</p>
         </div>
-        <button onClick={onClose}>Close</button>
+        <div className="dialog-buttons">
+          <button onClick={() => onMakeMove(suggestion.move)}>Make Move</button>
+          <button onClick={onClose}>Close</button>
+        </div>
       </div>
     </div>
   );

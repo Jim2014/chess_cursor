@@ -714,9 +714,92 @@ const Board: React.FC = () => {
   const handleSaveGeminiSettings = (apiKey: string, modelName: string) => {
     setGeminiApiKey(apiKey);
     setGeminiModelName(modelName);
-    localStorage.setItem('geminiApiKey', apiKey);
     localStorage.setItem('geminiModelName', modelName);
     setShowGeminiSettings(false);
+  };
+
+  const parseSanMove = (san: string): Move | null => {
+    // Normalize the SAN string
+    const normalizedSan = san.replace(/[+#]/g, ''); // Remove check/checkmate symbols
+
+    // Handle castling
+    if (normalizedSan === 'O-O') {
+        const row = turn === 'white' ? 7 : 0;
+        return { from: { row, col: 4 }, to: { row, col: 6 } };
+    }
+    if (normalizedSan === 'O-O-O') {
+        const row = turn === 'white' ? 7 : 0;
+        return { from: { row, col: 4 }, to: { row, col: 2 } };
+    }
+
+    const pieceTypeMap: { [key: string]: 'pawn' | 'knight' | 'bishop' | 'rook' | 'queen' | 'king' } = {
+        'N': 'knight', 'B': 'bishop', 'R': 'rook', 'Q': 'queen', 'K': 'king'
+    };
+
+    let pieceType: 'pawn' | 'knight' | 'bishop' | 'rook' | 'queen' | 'king' = 'pawn';
+    let sanWithoutPiece = normalizedSan;
+    if (pieceTypeMap[normalizedSan[0]]) {
+        pieceType = pieceTypeMap[normalizedSan[0]];
+        sanWithoutPiece = normalizedSan.substring(1);
+    }
+    
+    // Handle promotion
+    let promotion: PromotionType | undefined;
+    if (sanWithoutPiece.includes('=')) {
+        const parts = sanWithoutPiece.split('=');
+        sanWithoutPiece = parts[0];
+        promotion = parts[1].toLowerCase() as PromotionType;
+    }
+
+    // Extract destination square
+    const toFile = sanWithoutPiece.slice(-2, -1);
+    const toRank = sanWithoutPiece.slice(-1);
+    const toCol = toFile.charCodeAt(0) - 'a'.charCodeAt(0);
+    const toRow = 8 - parseInt(toRank, 10);
+
+    const toCoord = { row: toRow, col: toCol };
+
+    // Find the source piece
+    for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+            const piece = board[r][c];
+            if (piece && piece.type === pieceType && piece.color === turn) {
+                const fromCoord = { row: r, col: c };
+                const move: Move = { from: fromCoord, to: toCoord, promotion };
+                const gameState = createGameState(board, turn, lastMove);
+                gameState.castlingRights = castlingRights;
+                if (isValidMove(gameState, move)) {
+                    // Handle disambiguation if present in SAN
+                    const disambiguation = sanWithoutPiece.slice(0, -2).replace('x', '');
+                    if (disambiguation) {
+                        const fromFile = 'abcdefgh'[c];
+                        const fromRank = (8 - r).toString();
+                        if (disambiguation.length === 1) {
+                            if (disambiguation === fromFile || disambiguation === fromRank) {
+                                return move;
+                            }
+                        } else if (disambiguation === fromFile + fromRank) {
+                            return move;
+                        }
+                    } else {
+                        return move;
+                    }
+                }
+            }
+        }
+    }
+
+    return null; // Move could not be parsed
+  };
+
+  const handleMakeSuggestedMove = (moveStr: string) => {
+    const move = parseSanMove(moveStr);
+    if (move) {
+        handleMove(move);
+    } else {
+        alert(`Could not understand the suggested move: ${moveStr}`);
+    }
+    setShowSuggestion(false);
   };
 
   const generateFen = (): string => {
@@ -1056,6 +1139,7 @@ const Board: React.FC = () => {
         <SuggestionSheet
           suggestion={suggestion}
           onClose={() => setShowSuggestion(false)}
+          onMakeMove={handleMakeSuggestedMove}
         />
       )}
     </div>
