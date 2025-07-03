@@ -5,7 +5,7 @@ import "./styles/App.css";
 const App: React.FC = () => {
   return (
     <div className="app">
-      <h1>Chess Game - Cursor AI</h1>
+      <h1>Chess Game - AI</h1>
       <Board />
     </div>
 
