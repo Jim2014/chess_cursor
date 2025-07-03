@@ -181,10 +181,11 @@
 }
 
 .redo-button {
-  background-color: #5bc0de;
-  color: white;
-  border: none;
-  border-radius: 3px;
+  background-color: #f44336;
+}
+
+.fen-button {
+  background-color: #2196F3; /* Blue */
 }
 
 /* Add this to ensure squares are consistent size */

@@ -685,6 +685,101 @@ const Board: React.FC = () => {
     setSavedGames(newSaves);
   };
 
+  const generateFen = (): string => {
+    let fen = '';
+
+    // 1. Piece placement
+    for (let i = 0; i < 8; i++) {
+        let empty = 0;
+        for (let j = 0; j < 8; j++) {
+            const piece = board[i][j];
+            if (piece) {
+                if (empty > 0) {
+                    fen += empty;
+                    empty = 0;
+                }
+                let pieceChar;
+                switch (piece.type) {
+                    case 'pawn': pieceChar = 'p'; break;
+                    case 'knight': pieceChar = 'n'; break;
+                    case 'bishop': pieceChar = 'b'; break;
+                    case 'rook': pieceChar = 'r'; break;
+                    case 'queen': pieceChar = 'q'; break;
+                    case 'king': pieceChar = 'k'; break;
+                    default: pieceChar = '';
+                }
+                if (piece.color === 'white') {
+                    fen += pieceChar.toUpperCase();
+                } else {
+                    fen += pieceChar;
+                }
+            } else {
+                empty++;
+            }
+        }
+        if (empty > 0) {
+            fen += empty;
+        }
+        if (i < 7) {
+            fen += '/';
+        }
+    }
+
+    // 2. Active color
+    fen += turn === 'white' ? ' w' : ' b';
+
+    // 3. Castling availability
+    let castling = '';
+    if (castlingRights.white.kingSide) castling += 'K';
+    if (castlingRights.white.queenSide) castling += 'Q';
+    if (castlingRights.black.kingSide) castling += 'k';
+    if (castlingRights.black.queenSide) castling += 'q';
+    fen += ' ' + (castling || '-');
+
+    // 4. En passant target square
+    let enPassant = '-';
+    if (lastMove) {
+        const movedPiece = board[lastMove.to.row][lastMove.to.col];
+        if (movedPiece?.type === 'pawn' && Math.abs(lastMove.from.row - lastMove.to.row) === 2) {
+            const file = 'abcdefgh'[lastMove.from.col];
+            const rank = '87654321'[(lastMove.from.row + lastMove.to.row) / 2];
+            enPassant = file + rank;
+        }
+    }
+    fen += ' ' + enPassant;
+
+    // 5. Halfmove clock
+    let halfMoveClock = 0;
+    if (moveHistory.length > 0) {
+        for (let i = moveHistory.length - 1; i >= 0; i--) {
+            const historicMove = moveHistory[i];
+            const movedPieceOnSnapshot = historicMove.snapshot.board[historicMove.move.from.row][historicMove.move.from.col];
+            const capturedPieceOnSnapshot = historicMove.snapshot.board[historicMove.move.to.row][historicMove.move.to.col];
+
+            if (movedPieceOnSnapshot?.type === 'pawn' || capturedPieceOnSnapshot) {
+                break;
+            }
+            halfMoveClock++;
+        }
+    }
+    fen += ' ' + halfMoveClock;
+
+    // 6. Fullmove number
+    fen += ' ' + (Math.floor(moveHistory.length / 2) + 1);
+
+    return fen;
+  };
+
+  const handleCopyFen = () => {
+      const fen = generateFen();
+      navigator.clipboard.writeText(fen).then(() => {
+          alert(`FEN copied to clipboard!\n\n${fen}`);
+      }, (err) => {
+          console.error('Could not copy FEN: ', err);
+          alert('Failed to copy FEN.');
+      });
+  };
+
   const renderSquare = (row: number, col: number) => {
     const position: Coordinate = { row, col };
     const piece = board[row][col];
@@ -758,6 +853,9 @@ const Board: React.FC = () => {
       </button>
       <button className="redo-button" onClick={handleRedo}>
         Redo
+      </button>
+      <button className="fen-button" onClick={handleCopyFen}>
+        FEN
       </button>
     </div>
   );
