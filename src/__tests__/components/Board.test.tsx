@@ -305,6 +305,128 @@ describe('Board Component', () => {
       });
     });
   });
+
+  test('handles en passant, undo, and redo correctly', () => {
+    render(<Board />);
+    const squares = document.querySelectorAll('.square');
+
+    // Helper function to click squares by position
+    const clickSquare = (row: number, col: number) => {
+      fireEvent.click(squares[row * 8 + col]);
+    };
+
+    // 1. White: e2 -> e4
+    clickSquare(6, 4);
+    clickSquare(4, 4);
+
+    // 2. Black: a7 -> a6 (just to pass the turn)
+    clickSquare(1, 0);
+    clickSquare(2, 0);
+
+    // 3. White: e4 -> e5
+    clickSquare(4, 4);
+    clickSquare(3, 4);
+
+    // 4. Black: d7 -> d5
+    clickSquare(1, 3);
+    clickSquare(3, 3);
+
+    // 5. White: exd6 (en passant)
+    clickSquare(3, 4); // White pawn at e5
+    clickSquare(2, 3); // Target square d6
+
+    // Verify en passant capture
+    expect(squares[2 * 8 + 3].querySelector('.piece')?.textContent).toBe('♙'); // White pawn on d6
+    expect(squares[3 * 8 + 3].querySelector('.piece')).toBeNull(); // Black pawn on d5 is gone
+
+    // Undo en passant
+    const undoButton = screen.getByText('Undo');
+    fireEvent.click(undoButton);
+
+    // Verify pieces are back to pre-en passant positions
+    expect(squares[3 * 8 + 4].querySelector('.piece')?.textContent).toBe('♙'); // White pawn on e5
+    expect(squares[3 * 8 + 3].querySelector('.piece')?.textContent).toBe('♟'); // Black pawn on d5
+    expect(squares[2 * 8 + 3].querySelector('.piece')).toBeNull(); // d6 is empty
+
+    // Redo en passant
+    const redoButton = screen.getByText('Redo');
+    fireEvent.click(redoButton);
+
+    // Verify en passant capture again
+    expect(squares[2 * 8 + 3].querySelector('.piece')?.textContent).toBe('♙'); // White pawn on d6
+    expect(squares[3 * 8 + 3].querySelector('.piece')).toBeNull(); // Black pawn on d5 is gone
+  });
+
+  test('handles promotion, undo, and redo correctly', async () => {
+    render(<Board />);
+    const squares = document.querySelectorAll('.square');
+
+    // Helper function to click squares by position
+    const clickSquare = (row: number, col: number) => {
+      fireEvent.click(squares[row * 8 + col]);
+    };
+
+    // Simplified move sequence for promotion
+    // 1. White: a2 -> a4
+    clickSquare(6, 0);
+    clickSquare(4, 0);
+    // 2. Black: d7 -> d5
+    clickSquare(1, 3);
+    clickSquare(3, 3);
+    // 3. White: a4 -> a5
+    clickSquare(4, 0);
+    clickSquare(3, 0);
+    // 4. Black: d5 -> d4
+    clickSquare(3, 3);
+    clickSquare(4, 3);
+    // 5. White: a5 -> a6
+    clickSquare(3, 0);
+    clickSquare(2, 0);
+    // 6. Black: h7 -> h6
+    clickSquare(1, 7);
+    clickSquare(2, 7);
+    // 7. White: a6 -> b7 (capture)
+    clickSquare(2, 0);
+    clickSquare(1, 1);
+    // 8. Black: h6 -> h5
+    clickSquare(2, 7);
+    clickSquare(3, 7);
+    // 9. White: b7 -> c8 (capture and promote)
+    clickSquare(1, 1);
+    clickSquare(0, 2);
+
+    // Promotion dialog should appear for the initial move
+    await waitFor(() => {
+      expect(screen.getByText('Choose promotion piece')).toBeInTheDocument();
+    });
+
+    // Promote to Queen
+    fireEvent.click(screen.getByRole('button', { name: '♕' }));
+
+    // Verify promotion
+    await waitFor(() => {
+      expect(squares[0 * 8 + 2].querySelector('.piece')?.textContent).toBe('♕'); // Queen on c8
+    });
+
+    // Undo promotion
+    const undoButton = screen.getByText('Undo');
+    fireEvent.click(undoButton);
+
+    // Verify pieces are back to pre-promotion positions
+    await waitFor(() => {
+      expect(squares[1 * 8 + 1].querySelector('.piece')?.textContent).toBe('♙'); // White pawn on b7
+      expect(squares[0 * 8 + 2].querySelector('.piece')?.textContent).toBe('♝'); // Black bishop on c8
+    });
+
+    // Redo promotion
+    const redoButton = screen.getByText('Redo');
+    fireEvent.click(redoButton);
+
+    // Verify promotion again (no dialog should appear on redo)
+    await waitFor(() => {
+      expect(squares[0 * 8 + 2].querySelector('.piece')?.textContent).toBe('♕'); // Queen on c8
+    });
+  });
 });
 
 export {}; // This makes the file a module

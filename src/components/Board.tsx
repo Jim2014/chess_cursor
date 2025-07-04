@@ -557,6 +557,9 @@ const Board: React.FC = () => {
     setSelectedPosition(null);
     setPromotionSquare(null);
     setPendingMove(null);
+    setShowPromotionDialog(false);
+    setShowPromotionDialog(false);
+    
   };
 
   // Undo: Restore the previous game state.
@@ -583,33 +586,21 @@ const Board: React.FC = () => {
   // Redo: Restore the state from the redo stack.
   const handleRedo = () => {
     if (redoStack.length === 0) return;
+  
+    const moveWithSnapshot = redoStack[redoStack.length - 1];
     
-    const nextMove = redoStack[redoStack.length - 1];
-    
-    // Make the move
-    const newBoard = board.map(row => [...row]);
-    newBoard[nextMove.move.to.row][nextMove.move.to.col] = 
-      newBoard[nextMove.move.from.row][nextMove.move.from.col];
-    newBoard[nextMove.move.from.row][nextMove.move.from.col] = null;
-    
-    // Handle promotion if present
-    if (nextMove.move.promotion) {
-      newBoard[nextMove.move.to.row][nextMove.move.to.col] = {
-        type: nextMove.move.promotion,
-        color: turn
-      };
-    }
-    
-    setMoveHistory([...moveHistory, nextMove]);
+    // Restore the state to how it was *before* the move we are redoing
+    setBoard(moveWithSnapshot.snapshot.board);
+    setTurn(moveWithSnapshot.snapshot.turn);
+    setCastlingRights(moveWithSnapshot.snapshot.castlingRights);
+    setIsCheck(moveWithSnapshot.snapshot.isCheck);
+    setLastMove(moveWithSnapshot.snapshot.lastMove);
+  
+    // Now, re-apply the move
+    makeMove(moveWithSnapshot.move);
+  
+    // Clean up the redo stack
     setRedoStack(redoStack.slice(0, -1));
-    
-    // Apply the new state
-    setBoard(newBoard);
-    setTurn(turn === "white" ? "black" : "white");
-    setLastMove(nextMove.move);
-    setComputerLastMove(nextMove.move); // Set computer last move for highlighting
-    setSelectedPosition(null);
-    setAllowedMoves([]);
   };
 
   const resetGame = () => {
